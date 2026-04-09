@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material3.Card
@@ -35,10 +37,14 @@ fun PhotoItem(
     rotationDegrees: Int = 0,
     flipHorizontal: Boolean = false,
     flipVertical: Boolean = false,
+    hasCustomDelay: Boolean = false,
+    hasCustomOverlay: Boolean = false,
     onRotate: () -> Unit = {},
     onFlipHorizontal: () -> Unit = {},
     onFlipVertical: () -> Unit = {},
     onDelete: () -> Unit,
+    onDuplicate: () -> Unit = {},
+    onEdit: () -> Unit = {},
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier
 ) {
@@ -80,10 +86,19 @@ fun PhotoItem(
                     .weight(1f)
                     .padding(horizontal = 8.dp)
             ) {
-                Text(
-                    text = "Frame ${index + 1}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Frame ${index + 1}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    if (hasCustomDelay || hasCustomOverlay) {
+                        Text(
+                            text = " *",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
@@ -119,6 +134,28 @@ fun PhotoItem(
                             modifier = Modifier
                                 .size(18.dp)
                                 .graphicsLayer { rotationZ = 90f },
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = onDuplicate,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Duplicate frame",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit frame",
+                            modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }

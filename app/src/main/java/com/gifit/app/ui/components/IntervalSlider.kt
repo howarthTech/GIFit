@@ -21,7 +21,7 @@ fun IntervalSlider(
 
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Text(
-            text = "Frame delay: ${"%.1f".format(seconds)}s",
+            text = "Default frame delay: ${"%.1f".format(seconds)}s",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface
         )
