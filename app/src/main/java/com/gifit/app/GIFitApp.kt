@@ -1,5 +1,11 @@
 package com.gifit.app
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,19 +25,33 @@ fun GIFitApp() {
         var photoFrames by remember { mutableStateOf<List<PhotoFrame>>(emptyList()) }
         var gifSettings by remember { mutableStateOf(GifSettings()) }
 
-        when (currentScreen) {
-            Screen.Home -> HomeScreen(
-                onNavigateToPreview = { frames, settings ->
-                    photoFrames = frames
-                    gifSettings = settings
-                    currentScreen = Screen.Preview
+        AnimatedContent(
+            targetState = currentScreen,
+            transitionSpec = {
+                if (targetState == Screen.Preview) {
+                    (slideInHorizontally { it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { -it } + fadeOut())
+                } else {
+                    (slideInHorizontally { -it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { it } + fadeOut())
                 }
-            )
-            Screen.Preview -> PreviewScreen(
-                photoFrames = photoFrames,
-                gifSettings = gifSettings,
-                onNavigateBack = { currentScreen = Screen.Home }
-            )
+            },
+            label = "screen_transition"
+        ) { screen ->
+            when (screen) {
+                Screen.Home -> HomeScreen(
+                    onNavigateToPreview = { frames, settings ->
+                        photoFrames = frames
+                        gifSettings = settings
+                        currentScreen = Screen.Preview
+                    }
+                )
+                Screen.Preview -> PreviewScreen(
+                    photoFrames = photoFrames,
+                    gifSettings = gifSettings,
+                    onNavigateBack = { currentScreen = Screen.Home }
+                )
+            }
         }
     }
 }

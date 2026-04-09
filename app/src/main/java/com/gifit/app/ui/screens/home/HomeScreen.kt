@@ -34,13 +34,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,6 +70,7 @@ fun HomeScreen(
     val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
     val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val hapticFeedback = LocalHapticFeedback.current
 
     var editingFrameId by remember { mutableStateOf<String?>(null) }
     var croppingFrameId by remember { mutableStateOf<String?>(null) }
@@ -234,6 +238,11 @@ fun HomeScreen(
                 ) {
                     itemsIndexed(frames, key = { _, frame -> frame.id }) { index, frame ->
                         ReorderableItem(reorderableLazyListState, key = frame.id) { isDragging ->
+                            LaunchedEffect(isDragging) {
+                                if (isDragging) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            }
                             PhotoItem(
                                 index = index,
                                 uri = frame.uri,
