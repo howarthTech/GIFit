@@ -1,37 +1,50 @@
-# GIF.it — SDK Compatibility Update Plan
+# GIFit — Development Plan
 
-## Current State
-The project is already a fully functional GIF maker with:
-- Photo picker, drag-to-reorder, interval slider, GIF preview
-- Custom GIF encoder (NeuQuant + LZW)
-- Save to gallery & share
-- Proper version-gated storage (MediaStore on API 29+, legacy file I/O below)
+## App Overview
+A GIF maker for Android that converts photos into animated GIFs with text overlays, adjustable timing, and sharing support. Built with Jetpack Compose, Hilt, and a custom GIF encoder.
 
-## What Needs to Change
+## Completed
 
-### 1. Update `app/build.gradle.kts` SDK versions
-- `compileSdk`: 35 → **36** (Android 16)
-- `targetSdk`: 35 → **36**
-- `minSdk`: 24 → **21** (Android 5.0, ~99% device coverage)
+### Build & Infrastructure
+- Cloned from github.com/howarthTech/GIFit.git
+- Configured local build environment (JAVA_HOME, local.properties, junction at C:\GITit)
+- Moved Gradle build output to `C:\GITit_build\` to prevent Google Drive sync locking
+- Wireless ADB setup for Pixel 9 testing (192.168.50.115)
 
-### 2. Update AGP version (if needed)
-- Current AGP: **8.7.3** — may not support `compileSdk 36`
-- Will update `build.gradle.kts` root plugin to a version that supports API 36 (e.g. 8.9.x+)
-- Update Kotlin & Compose plugin versions if required for compatibility
+### UX / Keyboard
+- `imePadding()` on main screen Column, FrameEditDialog bottom sheet, and FAB so keyboard never covers input fields
 
-### 3. Verify API 21 compatibility across all source files
-The code already looks safe:
-- `MediaStoreSaver.kt` — version-gates API 29+ MediaStore vs legacy file I/O ✅
-- `Theme.kt` — version-gates dynamic color (API 31+) ✅
-- `PreviewScreen.kt` — version-gates storage permission request ✅
-- `PickMultipleVisualMedia` — backported via AndroidX Activity, works on API 21+ ✅
-- Jetpack Compose supports minSdk 21 ✅
+### Text Overlay
+- Text overlay rendered in preview (previously only baked into exported GIF)
+- Draggable anywhere on the preview area (single finger)
+- Pinch-to-scale and twist-to-rotate via `detectTransformGestures` on the full preview area
+- Color picker: 8 preset colors (white, black, yellow, orange, red, pink, cyan, green)
+- Font selector: Bold, Serif, Mono, Sans
+- Reset button to snap text back to center at default size/rotation
+- All transform + style settings baked into exported GIF
 
-No code changes expected beyond build config.
+### Frame Delay
+- Global interval slider max raised from 3s → 10s
+- Per-frame delay slider in FrameEditDialog also raised to 10s
 
-### 4. Build & verify
-- Run `./gradlew assembleDebug` to confirm everything compiles cleanly
+### Preview / Export
+- Share button always visible — if tapped before generation, generates then auto-shares
+- Progress shown inline while encoding
 
-## Files to Edit
-1. `/home/darrell/Desktop/GIFit/build.gradle.kts` — AGP/Kotlin plugin versions
-2. `/home/darrell/Desktop/GIFit/app/build.gradle.kts` — compileSdk, targetSdk, minSdk
+### App Icon
+- New adaptive icon: white film strip frame + play triangle on purple gradient background
+
+## Remaining Work (Prioritised)
+
+### Quick wins
+- **Loop count selector** — currently hardcoded to infinite; add 1×, 3×, 5×, ∞ option
+- **Speed presets** — tap buttons (0.5s / 1s / 2s / 5s) above the interval slider
+
+### UX Polish
+- **Frame count badge** on photo thumbnails in the home list
+- **Duplicate frame to specific position** — currently always inserts right after source
+
+### Bigger Features
+- **Sticker / emoji overlay** — place emoji on frames alongside text
+- **Undo/redo in preview** — reset text positioning mistakes without using the reset button
+- **WebP/APNG export** — requires native NDK library (libwebp); significant effort
