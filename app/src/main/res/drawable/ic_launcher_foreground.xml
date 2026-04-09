@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- White rounded rectangle (film frame / screen) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,20 L78,20 Q88,20 88,30 L88,78 Q88,88 78,88 L30,88 Q20,88 20,78 L20,30 Q20,20 30,20 Z"/>
+
+    <!-- Film strip holes — left side (punched out in bg color) -->
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M20,34 L28,34 L28,44 L20,44 Z"/>
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M20,49 L28,49 L28,59 L20,59 Z"/>
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M20,64 L28,64 L28,74 L20,74 Z"/>
+
+    <!-- Film strip holes — right side -->
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M80,34 L88,34 L88,44 L80,44 Z"/>
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M80,49 L88,49 L88,59 L80,59 Z"/>
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M80,64 L88,64 L88,74 L80,74 Z"/>
+
+    <!-- Play triangle (bg color, centered in the white frame) -->
+    <path
+        android:fillColor="#6422E8"
+        android:pathData="M44,38 L44,70 L74,54 Z"/>
+
+</vector>
