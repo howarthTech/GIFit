@@ -8,7 +8,14 @@ data class GifSettings(
     val resolutionPreset: ResolutionPreset = ResolutionPreset.MEDIUM,
     val quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT,
     val globalDelayMs: Int = 500,
-    val globalOverlayText: String = ""
+    val globalOverlayText: String = "",
+    val overlayTextX: Float = 0.5f,
+    val overlayTextY: Float = 0.5f,
+    val overlayTextScale: Float = 1.0f,
+    val overlayTextRotation: Float = 0f,
+    val overlayTextColor: OverlayTextColor = OverlayTextColor.WHITE,
+    val overlayTextBackground: Boolean = false,
+    val overlayTextFont: OverlayFont = OverlayFont.DEFAULT_BOLD
 ) : Parcelable
 
 enum class QuantizerType { MEDIAN_CUT, NEUQUANT }

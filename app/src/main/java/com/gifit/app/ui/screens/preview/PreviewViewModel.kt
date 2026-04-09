@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gifit.app.gif.AnimatedGifEncoder
 import com.gifit.app.model.GifSettings
+import com.gifit.app.model.OverlayFont
+import com.gifit.app.model.OverlayTextColor
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.model.QuantizerType
 import com.gifit.app.util.ImageResizer
@@ -49,7 +51,58 @@ class PreviewViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun loadFrames(context: Context, photoFrames: List<PhotoFrame>, maxWidth: Int = 480) {
+    private val _overlayTextX = MutableStateFlow(0.5f)
+    val overlayTextX: StateFlow<Float> = _overlayTextX.asStateFlow()
+
+    private val _overlayTextY = MutableStateFlow(0.5f)
+    val overlayTextY: StateFlow<Float> = _overlayTextY.asStateFlow()
+
+    private val _overlayTextScale = MutableStateFlow(1.0f)
+    val overlayTextScale: StateFlow<Float> = _overlayTextScale.asStateFlow()
+
+    private val _overlayTextRotation = MutableStateFlow(0f)
+    val overlayTextRotation: StateFlow<Float> = _overlayTextRotation.asStateFlow()
+
+    private val _overlayTextColor = MutableStateFlow(OverlayTextColor.WHITE)
+    val overlayTextColor: StateFlow<OverlayTextColor> = _overlayTextColor.asStateFlow()
+
+    private val _overlayTextBackground = MutableStateFlow(false)
+    val overlayTextBackground: StateFlow<Boolean> = _overlayTextBackground.asStateFlow()
+
+    private val _overlayTextFont = MutableStateFlow(OverlayFont.DEFAULT_BOLD)
+    val overlayTextFont: StateFlow<OverlayFont> = _overlayTextFont.asStateFlow()
+
+    fun updateOverlayColor(color: OverlayTextColor) { _overlayTextColor.value = color }
+    fun updateOverlayBackground(enabled: Boolean) { _overlayTextBackground.value = enabled }
+    fun updateOverlayFont(font: OverlayFont) { _overlayTextFont.value = font }
+
+    fun updateOverlayTransform(x: Float, y: Float, scale: Float, rotation: Float) {
+        _overlayTextX.value = x
+        _overlayTextY.value = y
+        _overlayTextScale.value = scale
+        _overlayTextRotation.value = rotation
+    }
+
+    fun resetOverlayTransform() {
+        _overlayTextX.value = 0.5f
+        _overlayTextY.value = 0.5f
+        _overlayTextScale.value = 1.0f
+        _overlayTextRotation.value = 0f
+        _overlayTextColor.value = OverlayTextColor.WHITE
+        _overlayTextBackground.value = false
+        _overlayTextFont.value = OverlayFont.DEFAULT_BOLD
+    }
+
+    fun loadFrames(context: Context, photoFrames: List<PhotoFrame>, maxWidth: Int = 480, gifSettings: com.gifit.app.model.GifSettings? = null) {
+        gifSettings?.let {
+            _overlayTextX.value = it.overlayTextX
+            _overlayTextY.value = it.overlayTextY
+            _overlayTextScale.value = it.overlayTextScale
+            _overlayTextRotation.value = it.overlayTextRotation
+            _overlayTextColor.value = it.overlayTextColor
+            _overlayTextBackground.value = it.overlayTextBackground
+            _overlayTextFont.value = it.overlayTextFont
+        }
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -138,6 +191,13 @@ class PreviewViewModel @Inject constructor(
                         outputStream = outputStream,
                         perFrameOverlays = perFrameOverlays,
                         quantizerType = quantizerType,
+                        overlayTextX = _overlayTextX.value,
+                        overlayTextY = _overlayTextY.value,
+                        overlayTextScale = _overlayTextScale.value,
+                        overlayTextRotation = _overlayTextRotation.value,
+                        overlayTextColor = _overlayTextColor.value,
+                        overlayTextBackground = _overlayTextBackground.value,
+                        overlayTextFont = _overlayTextFont.value,
                         onProgress = { current, total ->
                             _progress.value = current.toFloat() / total
                         }
