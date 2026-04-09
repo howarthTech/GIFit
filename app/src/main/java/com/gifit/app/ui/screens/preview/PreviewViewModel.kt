@@ -4,12 +4,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gifit.app.gif.AnimatedGifEncoder
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.util.ImageResizer
 import com.gifit.app.util.MediaStoreSaver
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +19,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 
-class PreviewViewModel : ViewModel() {
+@HiltViewModel
+class PreviewViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
 
     private val _frames = MutableStateFlow<List<Bitmap>>(emptyList())
     val frames: StateFlow<List<Bitmap>> = _frames.asStateFlow()

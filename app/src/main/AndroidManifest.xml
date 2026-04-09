@@ -6,6 +6,7 @@
         android:maxSdkVersion="28" />
 
     <application
+        android:name=".GIFitApplication"
         android:label="GIFit"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

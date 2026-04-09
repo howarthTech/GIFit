@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.ui.components.IntervalSlider
 import com.gifit.app.ui.components.PhotoItem
@@ -46,7 +46,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun HomeScreen(
     onNavigateToPreview: (frames: List<PhotoFrame>, intervalMs: Int, overlayText: String) -> Unit,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
     val frames by viewModel.frames.collectAsStateWithLifecycle()
     val intervalMs by viewModel.intervalMs.collectAsStateWithLifecycle()

@@ -42,7 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.ui.components.AnimatedGifPreview
 
@@ -53,7 +53,7 @@ fun PreviewScreen(
     intervalMs: Int,
     overlayText: String = "",
     onNavigateBack: () -> Unit,
-    viewModel: PreviewViewModel = viewModel()
+    viewModel: PreviewViewModel = hiltViewModel()
 ) {
     val frames by viewModel.frames.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
