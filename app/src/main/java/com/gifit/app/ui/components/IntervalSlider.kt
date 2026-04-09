@@ -28,8 +28,8 @@ fun IntervalSlider(
         Slider(
             value = seconds,
             onValueChange = { onIntervalChange((it * 1000).roundToInt()) },
-            valueRange = 0.1f..3.0f,
-            steps = 28, // 0.1s increments: (3.0 - 0.1) / 0.1 - 1 = 28
+            valueRange = 0.1f..10.0f,
+            steps = 98, // 0.1s increments: (10.0 - 0.1) / 0.1 - 1 = 98
             modifier = Modifier.fillMaxWidth()
         )
     }

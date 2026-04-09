@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +54,7 @@ fun FrameEditDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                .imePadding()
         ) {
             Text(
                 text = "Edit Frame ${frameIndex + 1}",
@@ -74,8 +76,8 @@ fun FrameEditDialog(
                     useCustomDelay = true
                     onDelayChanged((it * 1000).roundToInt())
                 },
-                valueRange = 0.1f..3.0f,
-                steps = 28,
+                valueRange = 0.1f..10.0f,
+                steps = 98,
                 modifier = Modifier.fillMaxWidth()
             )
             if (useCustomDelay) {
