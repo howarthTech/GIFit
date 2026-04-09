@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -43,9 +44,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gifit.app.gif.GifEstimator
 import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.ui.components.AnimatedGifPreview
+import com.gifit.app.util.MediaStoreSaver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +61,7 @@ fun PreviewScreen(
     val frames by viewModel.frames.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
     val gifBytes by viewModel.gifBytes.collectAsStateWithLifecycle()
     val savedUri by viewModel.savedUri.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
@@ -68,21 +72,23 @@ fun PreviewScreen(
     val intervalMs = gifSettings.globalDelayMs
     val overlayText = gifSettings.globalOverlayText
 
-    // Permission launcher for legacy storage (API < 29)
+    // Build per-frame delays for preview
+    val perFrameDelays = remember(photoFrames, intervalMs) {
+        photoFrames.map { it.delayMs ?: intervalMs }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) viewModel.saveGif(context)
     }
 
-    // Load frames on first composition
     LaunchedEffect(photoFrames) {
         if (frames.isEmpty()) {
             viewModel.loadFrames(context, photoFrames, gifSettings.resolutionPreset.maxWidth)
         }
     }
 
-    // Show errors
     LaunchedEffect(error) {
         error?.let {
             snackbarHostState.showSnackbar(it)
@@ -90,14 +96,11 @@ fun PreviewScreen(
         }
     }
 
-    // Show save success
     LaunchedEffect(savedUri) {
         savedUri?.let {
             snackbarHostState.showSnackbar("GIF saved to gallery!")
         }
     }
-
-    val seconds = "%.1f".format(intervalMs / 1000f)
 
     Scaffold(
         topBar = {
@@ -140,10 +143,10 @@ fun PreviewScreen(
                     }
                 }
             } else if (frames.isNotEmpty()) {
-                // Animated preview
                 AnimatedGifPreview(
                     frames = frames,
                     delayMs = intervalMs,
+                    perFrameDelays = perFrameDelays,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
@@ -151,8 +154,9 @@ fun PreviewScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val seconds = "%.1f".format(intervalMs / 1000f)
                 Text(
-                    text = "${frames.size} frames at ${seconds}s interval",
+                    text = "${frames.size} frames at ${seconds}s default interval",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -167,8 +171,21 @@ fun PreviewScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Generate button
                 if (gifBytes == null) {
+                    // Show estimated size
+                    val estimate = GifEstimator.estimateReadable(
+                        frameCount = frames.size,
+                        resolutionPreset = gifSettings.resolutionPreset,
+                        quantizerType = gifSettings.quantizerType
+                    )
+                    Text(
+                        text = "Estimated size: $estimate",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Button(
                         onClick = {
                             viewModel.generateGif(
@@ -180,21 +197,23 @@ fun PreviewScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isGenerating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .height(20.dp)
-                                    .width(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Generating GIF...")
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val currentFrame = (progress * frames.size).toInt()
+                                Text("Encoding frame $currentFrame of ${frames.size}...")
+                                Spacer(modifier = Modifier.height(4.dp))
+                                LinearProgressIndicator(
+                                    progress = { progress },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         } else {
                             Text("Generate GIF")
                         }
                     }
                 } else {
-                    // GIF generated - show save and share
                     val sizeKb = (gifBytes?.size ?: 0) / 1024
                     Text(
                         text = "GIF ready (${sizeKb}KB)",
@@ -237,21 +256,21 @@ fun PreviewScreen(
                             }
                         }
 
+                        // Share — works immediately after generation (no save required)
                         OutlinedButton(
                             onClick = {
-                                val shareUri = savedUri
-                                if (shareUri != null) {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "image/gif"
-                                        putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(
-                                        Intent.createChooser(shareIntent, "Share GIF")
-                                    )
+                                val bytes = gifBytes ?: return@OutlinedButton
+                                val shareUri = MediaStoreSaver.shareTempGif(context, bytes)
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/gif"
+                                    putExtra(Intent.EXTRA_STREAM, shareUri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
+                                context.startActivity(
+                                    Intent.createChooser(shareIntent, "Share GIF")
+                                )
                             },
-                            enabled = savedUri != null,
+                            enabled = gifBytes != null,
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null)

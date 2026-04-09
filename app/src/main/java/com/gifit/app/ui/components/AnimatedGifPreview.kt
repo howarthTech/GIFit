@@ -20,16 +20,18 @@ import kotlinx.coroutines.delay
 fun AnimatedGifPreview(
     frames: List<Bitmap>,
     delayMs: Int,
+    perFrameDelays: List<Int>? = null,
     modifier: Modifier = Modifier
 ) {
     if (frames.isEmpty()) return
 
     var index by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(frames, delayMs) {
+    LaunchedEffect(frames, delayMs, perFrameDelays) {
         index = 0
         while (true) {
-            delay(delayMs.toLong())
+            val frameDelay = perFrameDelays?.getOrNull(index) ?: delayMs
+            delay(frameDelay.toLong())
             index = (index + 1) % frames.size
         }
     }

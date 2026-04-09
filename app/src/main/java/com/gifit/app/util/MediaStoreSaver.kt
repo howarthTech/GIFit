@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.content.FileProvider
 import java.io.File
 
 object MediaStoreSaver {
@@ -20,6 +21,24 @@ object MediaStoreSaver {
         } else {
             saveWithLegacy(context, gifBytes, fileName)
         }
+    }
+
+    /**
+     * Write GIF bytes to a temp cache file and return a FileProvider URI for sharing.
+     * Does not require WRITE_EXTERNAL_STORAGE.
+     */
+    fun shareTempGif(context: Context, gifBytes: ByteArray): Uri {
+        val cacheDir = File(context.cacheDir, "shared_gifs")
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+
+        val file = File(cacheDir, "GIFit_${System.currentTimeMillis()}.gif")
+        file.writeBytes(gifBytes)
+
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
     }
 
     private fun saveWithMediaStoreQ(
