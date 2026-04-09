@@ -2,10 +2,10 @@ package com.gifit.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.navigation.Screen
 import com.gifit.app.ui.screens.home.HomeScreen
@@ -17,22 +17,19 @@ fun GIFitApp() {
     GIFitTheme {
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
         var photoFrames by remember { mutableStateOf<List<PhotoFrame>>(emptyList()) }
-        var intervalMs by remember { mutableIntStateOf(500) }
-        var overlayText by remember { mutableStateOf("") }
+        var gifSettings by remember { mutableStateOf(GifSettings()) }
 
         when (currentScreen) {
             Screen.Home -> HomeScreen(
-                onNavigateToPreview = { frames, interval, text ->
+                onNavigateToPreview = { frames, settings ->
                     photoFrames = frames
-                    intervalMs = interval
-                    overlayText = text
+                    gifSettings = settings
                     currentScreen = Screen.Preview
                 }
             )
             Screen.Preview -> PreviewScreen(
                 photoFrames = photoFrames,
-                intervalMs = intervalMs,
-                overlayText = overlayText,
+                gifSettings = gifSettings,
                 onNavigateBack = { currentScreen = Screen.Home }
             )
         }

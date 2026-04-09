@@ -41,8 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.ui.components.AnimatedGifPreview
 
@@ -50,8 +51,7 @@ import com.gifit.app.ui.components.AnimatedGifPreview
 @Composable
 fun PreviewScreen(
     photoFrames: List<PhotoFrame>,
-    intervalMs: Int,
-    overlayText: String = "",
+    gifSettings: GifSettings,
     onNavigateBack: () -> Unit,
     viewModel: PreviewViewModel = hiltViewModel()
 ) {
@@ -65,6 +65,9 @@ fun PreviewScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val intervalMs = gifSettings.globalDelayMs
+    val overlayText = gifSettings.globalOverlayText
+
     // Permission launcher for legacy storage (API < 29)
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -75,7 +78,7 @@ fun PreviewScreen(
     // Load frames on first composition
     LaunchedEffect(photoFrames) {
         if (frames.isEmpty()) {
-            viewModel.loadFrames(context, photoFrames)
+            viewModel.loadFrames(context, photoFrames, gifSettings.resolutionPreset.maxWidth)
         }
     }
 
@@ -137,7 +140,7 @@ fun PreviewScreen(
                     }
                 }
             } else if (frames.isNotEmpty()) {
-                // Animated preview - contained within weighted space
+                // Animated preview
                 AnimatedGifPreview(
                     frames = frames,
                     delayMs = intervalMs,
@@ -167,7 +170,12 @@ fun PreviewScreen(
                 // Generate button
                 if (gifBytes == null) {
                     Button(
-                        onClick = { viewModel.generateGif(intervalMs, overlayText) },
+                        onClick = {
+                            viewModel.generateGif(
+                                photoFrames = photoFrames,
+                                gifSettings = gifSettings
+                            )
+                        },
                         enabled = !isGenerating,
                         modifier = Modifier.fillMaxWidth()
                     ) {

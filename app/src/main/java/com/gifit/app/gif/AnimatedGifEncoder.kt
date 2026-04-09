@@ -5,19 +5,22 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
+import com.gifit.app.model.QuantizerType
 import java.io.OutputStream
 
 /**
  * Encodes a list of Bitmaps into an animated GIF89a stream.
- * Uses median-cut quantization and LZW compression.
+ * Supports per-frame delays, per-frame text overlays, and multiple quantization algorithms.
  */
 class AnimatedGifEncoder {
 
     fun encode(
         frames: List<Bitmap>,
-        delayMs: Int,
+        perFrameDelays: List<Int>,
         outputStream: OutputStream,
-        overlayText: String? = null
+        perFrameOverlays: List<String?> = emptyList(),
+        quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT,
+        onProgress: ((currentFrame: Int, totalFrames: Int) -> Unit)? = null
     ) {
         require(frames.size >= 2) { "At least 2 frames required" }
 
@@ -25,7 +28,8 @@ class AnimatedGifEncoder {
         val height = frames[0].height
 
         // Extract ARGB pixels from all frames, applying text overlay if needed
-        val allArgbFrames = frames.map { frame ->
+        val allArgbFrames = frames.mapIndexed { index, frame ->
+            val overlayText = perFrameOverlays.getOrNull(index)
             val bitmap = if (!overlayText.isNullOrBlank()) {
                 drawTextOverlay(frame, overlayText)
             } else {
@@ -37,12 +41,12 @@ class AnimatedGifEncoder {
             pixels
         }
 
-        // Build global palette using median-cut quantization
-        val quantizer = MedianCutQuantizer()
+        // Build global palette using selected quantizer
+        val quantizer: Quantizer = when (quantizerType) {
+            QuantizerType.MEDIAN_CUT -> MedianCutQuantizer()
+            QuantizerType.NEUQUANT -> NeuQuantQuantizerAdapter()
+        }
         val palette = quantizer.buildPalette(allArgbFrames)
-
-        // Delay in centiseconds (GIF spec uses 1/100th second units)
-        val delayCs = delayMs / 10
 
         // Write GIF structure
         GifWriter.writeHeader(outputStream)
@@ -51,14 +55,17 @@ class AnimatedGifEncoder {
         GifWriter.writeNetscapeExtension(outputStream, loops = 0)
 
         // Encode each frame
-        for (argbPixels in allArgbFrames) {
-            val indexedPixels = quantizer.mapPixels(argbPixels)
+        for (i in allArgbFrames.indices) {
+            val indexedPixels = quantizer.mapPixels(allArgbFrames[i])
+            val delayCs = perFrameDelays.getOrElse(i) { 50 } / 10
 
             GifWriter.writeGraphicControlExtension(outputStream, delayCs)
             GifWriter.writeImageDescriptor(outputStream, width, height)
 
             val lzw = LzwEncoder(indexedPixels, 8)
             lzw.encode(outputStream)
+
+            onProgress?.invoke(i + 1, allArgbFrames.size)
         }
 
         GifWriter.writeTrailer(outputStream)
@@ -71,10 +78,8 @@ class AnimatedGifEncoder {
         val width = copy.width.toFloat()
         val height = copy.height.toFloat()
 
-        // Size text relative to image width
         val textSize = width / 12f
 
-        // Draw shadow/outline for readability
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
             this.textSize = textSize
@@ -92,7 +97,7 @@ class AnimatedGifEncoder {
         }
 
         val x = width / 2f
-        val y = height - textSize  // Near bottom
+        val y = height - textSize
 
         canvas.drawText(text, x, y, shadowPaint)
         canvas.drawText(text, x, y, textPaint)

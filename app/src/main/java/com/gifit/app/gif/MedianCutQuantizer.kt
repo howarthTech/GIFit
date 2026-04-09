@@ -4,7 +4,7 @@ package com.gifit.app.gif
  * Median-cut color quantization algorithm.
  * Reduces 24-bit RGB images to a 256-color palette.
  */
-class MedianCutQuantizer(private val maxColors: Int = 256) {
+class MedianCutQuantizer(private val maxColors: Int = 256) : Quantizer {
 
     private class ColorBox(
         val colors: IntArray,   // packed RGB ints
@@ -67,7 +67,7 @@ class MedianCutQuantizer(private val maxColors: Int = 256) {
      * Build a palette from the given ARGB pixel arrays.
      * Returns the palette as a ByteArray in RGB order (3 bytes per entry, 256 entries).
      */
-    fun buildPalette(frames: List<IntArray>): ByteArray {
+    override fun buildPalette(frames: List<IntArray>): ByteArray {
         // Collect unique colors (quantize to 15-bit for speed)
         val colorCounts = HashMap<Int, Int>(32768)
         for (argbPixels in frames) {
@@ -185,7 +185,7 @@ class MedianCutQuantizer(private val maxColors: Int = 256) {
     /**
      * Map an entire ARGB pixel array to palette indices.
      */
-    fun mapPixels(argbPixels: IntArray): IntArray {
+    override fun mapPixels(argbPixels: IntArray): IntArray {
         val indices = IntArray(argbPixels.size)
         for (i in argbPixels.indices) {
             val pixel = argbPixels[i]

@@ -8,7 +8,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gifit.app.gif.AnimatedGifEncoder
+import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
+import com.gifit.app.model.QuantizerType
 import com.gifit.app.util.ImageResizer
 import com.gifit.app.util.MediaStoreSaver
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +36,9 @@ class PreviewViewModel @Inject constructor(
 
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
+
+    private val _progress = MutableStateFlow(0f)
+    val progress: StateFlow<Float> = _progress.asStateFlow()
 
     private val _gifBytes = MutableStateFlow<ByteArray?>(null)
     val gifBytes: StateFlow<ByteArray?> = _gifBytes.asStateFlow()
@@ -65,47 +70,82 @@ class PreviewViewModel @Inject constructor(
     }
 
     private fun applyTransforms(source: Bitmap, frame: PhotoFrame): Bitmap {
-        if (frame.rotationDegrees == 0 && !frame.flipHorizontal && !frame.flipVertical) {
-            return source
+        val needsCrop = frame.cropRect != null
+        val needsTransform = frame.rotationDegrees != 0 || frame.flipHorizontal || frame.flipVertical
+
+        if (!needsCrop && !needsTransform) return source
+
+        var bitmap = source
+
+        // Apply crop first (in normalized coordinates)
+        if (frame.cropRect != null) {
+            val rect = frame.cropRect
+            val x = (rect.left * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
+            val y = (rect.top * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
+            val w = ((rect.right - rect.left) * bitmap.width).toInt().coerceIn(1, bitmap.width - x)
+            val h = ((rect.bottom - rect.top) * bitmap.height).toInt().coerceIn(1, bitmap.height - y)
+            val cropped = Bitmap.createBitmap(bitmap, x, y, w, h)
+            if (cropped !== bitmap) bitmap.recycle()
+            bitmap = cropped
         }
+
+        if (!needsTransform) return bitmap
 
         val matrix = Matrix()
-
         if (frame.flipHorizontal) {
-            matrix.postScale(-1f, 1f, source.width / 2f, source.height / 2f)
+            matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
         }
         if (frame.flipVertical) {
-            matrix.postScale(1f, -1f, source.width / 2f, source.height / 2f)
+            matrix.postScale(1f, -1f, bitmap.width / 2f, bitmap.height / 2f)
         }
         if (frame.rotationDegrees != 0) {
-            matrix.postRotate(frame.rotationDegrees.toFloat(), source.width / 2f, source.height / 2f)
+            matrix.postRotate(frame.rotationDegrees.toFloat(), bitmap.width / 2f, bitmap.height / 2f)
         }
 
-        val result = Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
-        if (result !== source) source.recycle()
+        val result = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (result !== bitmap) bitmap.recycle()
         return result
     }
 
-    fun generateGif(delayMs: Int, overlayText: String = "") {
+    fun generateGif(photoFrames: List<PhotoFrame>, gifSettings: GifSettings) {
         val currentFrames = _frames.value
         if (currentFrames.size < 2) return
 
         viewModelScope.launch {
             _isGenerating.value = true
+            _progress.value = 0f
             _error.value = null
             try {
                 val bytes = withContext(Dispatchers.Default) {
                     val outputStream = ByteArrayOutputStream()
                     val encoder = AnimatedGifEncoder()
+
+                    // Build per-frame delays
+                    val perFrameDelays = photoFrames.map { frame ->
+                        frame.delayMs ?: gifSettings.globalDelayMs
+                    }
+
+                    // Build per-frame overlay texts
+                    val perFrameOverlays = photoFrames.map { frame ->
+                        frame.overlayText ?: gifSettings.globalOverlayText.ifBlank { null }
+                    }
+
+                    val quantizerType = gifSettings.quantizerType
+
                     encoder.encode(
-                        currentFrames,
-                        delayMs,
-                        outputStream,
-                        overlayText = overlayText.ifBlank { null }
+                        frames = currentFrames,
+                        perFrameDelays = perFrameDelays,
+                        outputStream = outputStream,
+                        perFrameOverlays = perFrameOverlays,
+                        quantizerType = quantizerType,
+                        onProgress = { current, total ->
+                            _progress.value = current.toFloat() / total
+                        }
                     )
                     outputStream.toByteArray()
                 }
                 _gifBytes.value = bytes
+                _progress.value = 1f
             } catch (e: Exception) {
                 _error.value = "Failed to generate GIF: ${e.message}"
             } finally {

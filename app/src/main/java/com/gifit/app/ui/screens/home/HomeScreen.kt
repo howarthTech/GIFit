@@ -34,8 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.ui.components.IntervalSlider
 import com.gifit.app.ui.components.PhotoItem
@@ -45,19 +46,17 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToPreview: (frames: List<PhotoFrame>, intervalMs: Int, overlayText: String) -> Unit,
+    onNavigateToPreview: (frames: List<PhotoFrame>, settings: GifSettings) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val frames by viewModel.frames.collectAsStateWithLifecycle()
-    val intervalMs by viewModel.intervalMs.collectAsStateWithLifecycle()
-    val overlayText by viewModel.overlayText.collectAsStateWithLifecycle()
+    val gifSettings by viewModel.gifSettings.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 20)
     ) { uris ->
         if (uris.isNotEmpty()) {
-            // Take persistable permissions so URIs survive process death
             for (uri in uris) {
                 try {
                     context.contentResolver.takePersistableUriPermission(
@@ -107,7 +106,7 @@ fun HomeScreen(
             if (frames.size >= 2) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        onNavigateToPreview(frames, intervalMs, overlayText)
+                        onNavigateToPreview(frames, gifSettings)
                     },
                     icon = {
                         Icon(Icons.Default.PlayArrow, contentDescription = null)
@@ -170,7 +169,7 @@ fun HomeScreen(
 
                 // Text overlay input
                 OutlinedTextField(
-                    value = overlayText,
+                    value = gifSettings.globalOverlayText,
                     onValueChange = { viewModel.setOverlayText(it) },
                     label = { Text("Text overlay (optional)") },
                     placeholder = { Text("Enter text to display on GIF") },
@@ -183,7 +182,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 IntervalSlider(
-                    intervalMs = intervalMs,
+                    intervalMs = gifSettings.globalDelayMs,
                     onIntervalChange = { viewModel.setInterval(it) }
                 )
 

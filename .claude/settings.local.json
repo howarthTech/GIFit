@@ -35,7 +35,8 @@
       "Read(//home/darrell/.sdkman/candidates/**)",
       "Read(//snap/android-studio/**)",
       "Bash(export JAVA_HOME=/snap/android-studio/current/jbr)",
-      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")"
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(git push:*)"
     ]
   }
 }
