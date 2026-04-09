@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -176,7 +177,8 @@ fun HomeScreen(
                     icon = {
                         Icon(Icons.Default.PlayArrow, contentDescription = null)
                     },
-                    text = { Text("Preview GIF") }
+                    text = { Text("Preview GIF") },
+                    modifier = Modifier.imePadding()
                 )
             }
         }
@@ -185,6 +187,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
         ) {
             if (frames.isEmpty()) {
                 // Improved empty state
