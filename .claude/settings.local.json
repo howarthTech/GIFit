@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug)",
+      "Bash(python3 -c \"from PIL import Image; print\\(''Pillow OK''\\)\")",
+      "Bash(kill 31950)",
+      "Bash(kill -9 31950 31954 31974 32119 34596 34597 34602 34603)",
+      "Bash(/home/darrell/Android/Sdk/platform-tools/adb devices:*)",
+      "Bash(/home/darrell/Android/Sdk/platform-tools/adb kill-server:*)",
+      "Bash(/home/darrell/Android/Sdk/platform-tools/adb start-server:*)",
+      "Bash(/home/darrell/Android/Sdk/platform-tools/adb wait-for-device:*)",
+      "Bash(pkill -9 -f qemu-system-x86_64)",
+      "Bash(pkill -9 -f netsimd)",
+      "Bash(pkill -9 -f qemu-system)",
+      "Bash(xargs -r kill -9)",
+      "Bash(/home/darrell/Android/Sdk/emulator/emulator -accel-check)",
+      "Bash(pkill -9 -f crashpad)",
+      "Bash(kill -9 37170)",
+      "Bash(gradle --version)",
+      "Read(//home/darrell/Android/Sdk/**)",
+      "Read(//home/darrell/.gradle/wrapper/dists/**)",
+      "Bash(/home/darrell/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13/bin/gradle wrapper:*)",
+      "Bash(export JAVA_HOME=/snap/android-studio/209/jbr)",
+      "Bash(export ANDROID_HOME=/home/darrell/Android/Sdk)",
+      "Bash(gh auth:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
