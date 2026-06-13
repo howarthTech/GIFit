@@ -10,3 +10,8 @@
 .cxx
 local.properties
 *.hprof
+
+# Release signing (keep secret)
+keystore.properties
+*.jks
+*.keystore

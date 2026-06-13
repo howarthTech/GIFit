@@ -62,7 +62,7 @@ fun PreviewScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val gifBytes by viewModel.gifBytes.collectAsStateWithLifecycle()
+    val gifFile by viewModel.gifFile.collectAsStateWithLifecycle()
     val savedUri by viewModel.savedUri.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
@@ -171,50 +171,49 @@ fun PreviewScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (gifBytes == null) {
-                    // Show estimated size
-                    val estimate = GifEstimator.estimateReadable(
-                        frameCount = frames.size,
-                        resolutionPreset = gifSettings.resolutionPreset,
-                        quantizerType = gifSettings.quantizerType
-                    )
-                    Text(
-                        text = "Estimated size: $estimate",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (gifFile == null) {
+                    if (isGenerating) {
+                        // Dedicated progress area, separate from the action button.
+                        val currentFrame = (progress * frames.size).toInt().coerceIn(1, frames.size)
+                        Text(
+                            text = "Encoding frame $currentFrame of ${frames.size}...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        // Show estimated size
+                        val estimate = GifEstimator.estimateReadable(
+                            frameCount = frames.size,
+                            resolutionPreset = gifSettings.resolutionPreset,
+                            quantizerType = gifSettings.quantizerType
+                        )
+                        Text(
+                            text = "Estimated size: $estimate",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    Button(
-                        onClick = {
-                            viewModel.generateGif(
-                                photoFrames = photoFrames,
-                                gifSettings = gifSettings
-                            )
-                        },
-                        enabled = !isGenerating,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isGenerating) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                val currentFrame = (progress * frames.size).toInt()
-                                Text("Encoding frame $currentFrame of ${frames.size}...")
-                                Spacer(modifier = Modifier.height(4.dp))
-                                LinearProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier.fillMaxWidth()
+                        Button(
+                            onClick = {
+                                viewModel.generateGif(
+                                    context = context,
+                                    photoFrames = photoFrames,
+                                    gifSettings = gifSettings
                                 )
-                            }
-                        } else {
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text("Generate GIF")
                         }
                     }
                 } else {
-                    val sizeKb = (gifBytes?.size ?: 0) / 1024
+                    val sizeKb = (gifFile?.length() ?: 0L) / 1024
                     Text(
                         text = "GIF ready (${sizeKb}KB)",
                         style = MaterialTheme.typography.titleSmall,
@@ -240,7 +239,7 @@ fun PreviewScreen(
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(Icons.Default.Save, contentDescription = null)
+                                Icon(Icons.Default.Save, contentDescription = "Save to gallery")
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Save to Gallery")
                             }
@@ -259,8 +258,8 @@ fun PreviewScreen(
                         // Share — works immediately after generation (no save required)
                         OutlinedButton(
                             onClick = {
-                                val bytes = gifBytes ?: return@OutlinedButton
-                                val shareUri = MediaStoreSaver.shareTempGif(context, bytes)
+                                val file = gifFile ?: return@OutlinedButton
+                                val shareUri = MediaStoreSaver.fileProviderUri(context, file)
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "image/gif"
                                     putExtra(Intent.EXTRA_STREAM, shareUri)
@@ -270,10 +269,10 @@ fun PreviewScreen(
                                     Intent.createChooser(shareIntent, "Share GIF")
                                 )
                             },
-                            enabled = gifBytes != null,
+                            enabled = gifFile != null,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null)
+                            Icon(Icons.Default.Share, contentDescription = "Share GIF")
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Share")
                         }

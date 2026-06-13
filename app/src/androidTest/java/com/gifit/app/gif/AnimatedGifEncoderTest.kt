@@ -88,6 +88,39 @@ class AnimatedGifEncoderTest {
     }
 
     @Test
+    fun encode_withMixedDimensions_succeeds() {
+        // Frames with differing aspect ratios + a portrait frame (as a rotated photo
+        // would produce). Previously this crashed because the encoder used frame[0]'s
+        // dimensions for every frame's getPixels call.
+        val frames = listOf(
+            createSolidBitmap(Color.RED, width = 40, height = 30),
+            createSolidBitmap(Color.GREEN, width = 20, height = 60),
+            createSolidBitmap(Color.BLUE, width = 50, height = 50)
+        )
+        val output = ByteArrayOutputStream()
+        val encoder = AnimatedGifEncoder()
+        encoder.encode(
+            frames = frames,
+            perFrameDelays = listOf(100, 100, 100),
+            outputStream = output
+        )
+        val bytes = output.toByteArray()
+
+        val header = String(bytes.sliceArray(0..5), Charsets.US_ASCII)
+        assertEquals("GIF89a", header)
+        assertEquals(0x3B.toByte(), bytes.last())
+
+        // Logical screen descriptor (bytes 6-7 width, 8-9 height) should be the max
+        // dimensions across all frames: 50 x 60.
+        val screenWidth = (bytes[6].toInt() and 0xFF) or ((bytes[7].toInt() and 0xFF) shl 8)
+        val screenHeight = (bytes[8].toInt() and 0xFF) or ((bytes[9].toInt() and 0xFF) shl 8)
+        assertEquals(50, screenWidth)
+        assertEquals(60, screenHeight)
+
+        frames.forEach { it.recycle() }
+    }
+
+    @Test
     fun encode_reportsProgress() {
         val frames = listOf(
             createSolidBitmap(Color.RED),

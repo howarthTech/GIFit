@@ -21,7 +21,7 @@ fun QualitySelector(
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Text(
-            text = "Quality",
+            text = "Color quality",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -37,7 +37,7 @@ fun QualitySelector(
             FilterChip(
                 selected = selected == QuantizerType.NEUQUANT,
                 onClick = { onSelect(QuantizerType.NEUQUANT) },
-                label = { Text("Quality") }
+                label = { Text("Best") }
             )
         }
     }

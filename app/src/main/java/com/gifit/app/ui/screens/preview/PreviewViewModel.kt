@@ -20,7 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
+import java.io.BufferedOutputStream
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,8 +41,11 @@ class PreviewViewModel @Inject constructor(
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
 
-    private val _gifBytes = MutableStateFlow<ByteArray?>(null)
-    val gifBytes: StateFlow<ByteArray?> = _gifBytes.asStateFlow()
+    // The encoded GIF is streamed to a cache file rather than held in memory as a
+    // ByteArray. The file lives under cacheDir/shared_gifs so it can be handed
+    // straight to FileProvider for sharing (see res/xml/file_paths.xml).
+    private val _gifFile = MutableStateFlow<File?>(null)
+    val gifFile: StateFlow<File?> = _gifFile.asStateFlow()
 
     private val _savedUri = MutableStateFlow<Uri?>(null)
     val savedUri: StateFlow<Uri?> = _savedUri.asStateFlow()
@@ -107,17 +111,19 @@ class PreviewViewModel @Inject constructor(
         return result
     }
 
-    fun generateGif(photoFrames: List<PhotoFrame>, gifSettings: GifSettings) {
+    fun generateGif(context: Context, photoFrames: List<PhotoFrame>, gifSettings: GifSettings) {
         val currentFrames = _frames.value
         if (currentFrames.size < 2) return
 
+        val appContext = context.applicationContext
         viewModelScope.launch {
             _isGenerating.value = true
             _progress.value = 0f
             _error.value = null
             try {
-                val bytes = withContext(Dispatchers.Default) {
-                    val outputStream = ByteArrayOutputStream()
+                val file = withContext(Dispatchers.Default) {
+                    val cacheDir = File(appContext.cacheDir, "shared_gifs").apply { mkdirs() }
+                    val outFile = File(cacheDir, "GIFit_preview.gif")
                     val encoder = AnimatedGifEncoder()
 
                     // Build per-frame delays
@@ -130,21 +136,21 @@ class PreviewViewModel @Inject constructor(
                         frame.overlayText ?: gifSettings.globalOverlayText.ifBlank { null }
                     }
 
-                    val quantizerType = gifSettings.quantizerType
-
-                    encoder.encode(
-                        frames = currentFrames,
-                        perFrameDelays = perFrameDelays,
-                        outputStream = outputStream,
-                        perFrameOverlays = perFrameOverlays,
-                        quantizerType = quantizerType,
-                        onProgress = { current, total ->
-                            _progress.value = current.toFloat() / total
-                        }
-                    )
-                    outputStream.toByteArray()
+                    BufferedOutputStream(outFile.outputStream()).use { out ->
+                        encoder.encode(
+                            frames = currentFrames,
+                            perFrameDelays = perFrameDelays,
+                            outputStream = out,
+                            perFrameOverlays = perFrameOverlays,
+                            quantizerType = gifSettings.quantizerType,
+                            onProgress = { current, total ->
+                                _progress.value = current.toFloat() / total
+                            }
+                        )
+                    }
+                    outFile
                 }
-                _gifBytes.value = bytes
+                _gifFile.value = file
                 _progress.value = 1f
             } catch (e: Exception) {
                 _error.value = "Failed to generate GIF: ${e.message}"
@@ -155,13 +161,13 @@ class PreviewViewModel @Inject constructor(
     }
 
     fun saveGif(context: Context) {
-        val bytes = _gifBytes.value ?: return
+        val file = _gifFile.value ?: return
 
         viewModelScope.launch {
             _error.value = null
             try {
                 val uri = withContext(Dispatchers.IO) {
-                    MediaStoreSaver.saveGif(context, bytes)
+                    MediaStoreSaver.saveGif(context, file)
                 }
                 _savedUri.value = uri
             } catch (e: Exception) {

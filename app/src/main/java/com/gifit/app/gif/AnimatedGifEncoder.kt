@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.gifit.app.model.QuantizerType
+import java.io.BufferedOutputStream
 import java.io.OutputStream
 
 /**
@@ -24,20 +25,26 @@ class AnimatedGifEncoder {
     ) {
         require(frames.size >= 2) { "At least 2 frames required" }
 
-        val width = frames[0].width
-        val height = frames[0].height
+        // Frames may have differing dimensions (mixed aspect ratios, rotation, crop).
+        // The GIF has a single logical screen, so normalize every frame onto a common
+        // canvas large enough to hold the biggest one — centered, letterboxed on black.
+        val width = frames.maxOf { it.width }
+        val height = frames.maxOf { it.height }
 
-        // Extract ARGB pixels from all frames, applying text overlay if needed
+        // Extract ARGB pixels from all frames, normalizing size and applying overlay.
         val allArgbFrames = frames.mapIndexed { index, frame ->
+            val normalized = normalizeToCanvas(frame, width, height)
             val overlayText = perFrameOverlays.getOrNull(index)
             val bitmap = if (!overlayText.isNullOrBlank()) {
-                drawTextOverlay(frame, overlayText)
+                drawTextOverlay(normalized, overlayText)
             } else {
-                frame
+                normalized
             }
             val pixels = IntArray(width * height)
             bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-            if (bitmap !== frame) bitmap.recycle()
+            // Recycle any intermediate bitmaps we created; never the caller's originals.
+            if (bitmap !== normalized) bitmap.recycle()
+            if (normalized !== frame) normalized.recycle()
             pixels
         }
 
@@ -48,28 +55,59 @@ class AnimatedGifEncoder {
         }
         val palette = quantizer.buildPalette(allArgbFrames)
 
+        // Buffer output: GifWriter/LzwEncoder emit many tiny writes, which are a
+        // syscall each on an unbuffered FileOutputStream.
+        val out = if (outputStream is BufferedOutputStream) outputStream
+        else BufferedOutputStream(outputStream, 16 * 1024)
+
         // Write GIF structure
-        GifWriter.writeHeader(outputStream)
-        GifWriter.writeLogicalScreenDescriptor(outputStream, width, height)
-        GifWriter.writeColorTable(outputStream, palette)
-        GifWriter.writeNetscapeExtension(outputStream, loops = 0)
+        GifWriter.writeHeader(out)
+        GifWriter.writeLogicalScreenDescriptor(out, width, height)
+        GifWriter.writeColorTable(out, palette)
+        GifWriter.writeNetscapeExtension(out, loops = 0)
 
         // Encode each frame
         for (i in allArgbFrames.indices) {
             val indexedPixels = quantizer.mapPixels(allArgbFrames[i])
-            val delayCs = perFrameDelays.getOrElse(i) { 50 } / 10
+            val delayCs = toDelayCentiseconds(perFrameDelays.getOrElse(i) { 50 })
 
-            GifWriter.writeGraphicControlExtension(outputStream, delayCs)
-            GifWriter.writeImageDescriptor(outputStream, width, height)
+            GifWriter.writeGraphicControlExtension(out, delayCs)
+            GifWriter.writeImageDescriptor(out, width, height)
 
             val lzw = LzwEncoder(indexedPixels, 8)
-            lzw.encode(outputStream)
+            lzw.encode(out)
 
             onProgress?.invoke(i + 1, allArgbFrames.size)
         }
 
-        GifWriter.writeTrailer(outputStream)
-        outputStream.flush()
+        GifWriter.writeTrailer(out)
+        out.flush()
+    }
+
+    /**
+     * Convert a per-frame delay in milliseconds to GIF centiseconds, rounding to the
+     * nearest unit and clamping to a minimum of 2cs. Most browsers/viewers silently
+     * treat delays below ~2cs as 10cs, so flooring sub-20ms delays to 0 produced
+     * inconsistent playback speed.
+     */
+    private fun toDelayCentiseconds(delayMs: Int): Int {
+        val cs = (delayMs + 5) / 10
+        return cs.coerceAtLeast(2)
+    }
+
+    /**
+     * Return [source] unchanged if it already fills the canvas, otherwise draw it
+     * centered on an opaque black [canvasWidth] x [canvasHeight] bitmap.
+     */
+    private fun normalizeToCanvas(source: Bitmap, canvasWidth: Int, canvasHeight: Int): Bitmap {
+        if (source.width == canvasWidth && source.height == canvasHeight) return source
+        val canvasBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(canvasBitmap)
+        canvas.drawColor(Color.BLACK)
+        val left = (canvasWidth - source.width) / 2f
+        val top = (canvasHeight - source.height) / 2f
+        canvas.drawBitmap(source, left, top, null)
+        return canvasBitmap
     }
 
     private fun drawTextOverlay(source: Bitmap, text: String): Bitmap {

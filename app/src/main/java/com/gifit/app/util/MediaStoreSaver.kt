@@ -11,29 +11,27 @@ import java.io.File
 
 object MediaStoreSaver {
 
+    /**
+     * Copy an already-encoded GIF [gifFile] into the public gallery (Pictures/GIFit).
+     * Streams the file rather than buffering its bytes in memory.
+     */
     suspend fun saveGif(
         context: Context,
-        gifBytes: ByteArray,
+        gifFile: File,
         fileName: String = "GIFit_${System.currentTimeMillis()}.gif"
     ): Uri? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveWithMediaStoreQ(context, gifBytes, fileName)
+            saveWithMediaStoreQ(context, gifFile, fileName)
         } else {
-            saveWithLegacy(context, gifBytes, fileName)
+            saveWithLegacy(context, gifFile, fileName)
         }
     }
 
     /**
-     * Write GIF bytes to a temp cache file and return a FileProvider URI for sharing.
-     * Does not require WRITE_EXTERNAL_STORAGE.
+     * Return a FileProvider URI for an already-written cache file so it can be shared.
+     * The file must live under a path declared in res/xml/file_paths.xml.
      */
-    fun shareTempGif(context: Context, gifBytes: ByteArray): Uri {
-        val cacheDir = File(context.cacheDir, "shared_gifs")
-        if (!cacheDir.exists()) cacheDir.mkdirs()
-
-        val file = File(cacheDir, "GIFit_${System.currentTimeMillis()}.gif")
-        file.writeBytes(gifBytes)
-
+    fun fileProviderUri(context: Context, file: File): Uri {
         return FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -43,7 +41,7 @@ object MediaStoreSaver {
 
     private fun saveWithMediaStoreQ(
         context: Context,
-        gifBytes: ByteArray,
+        gifFile: File,
         fileName: String
     ): Uri? {
         val contentValues = ContentValues().apply {
@@ -59,8 +57,8 @@ object MediaStoreSaver {
             contentValues
         ) ?: return null
 
-        resolver.openOutputStream(uri)?.use { stream ->
-            stream.write(gifBytes)
+        resolver.openOutputStream(uri)?.use { out ->
+            gifFile.inputStream().use { it.copyTo(out) }
         }
 
         contentValues.clear()
@@ -73,7 +71,7 @@ object MediaStoreSaver {
     @Suppress("DEPRECATION")
     private fun saveWithLegacy(
         context: Context,
-        gifBytes: ByteArray,
+        gifFile: File,
         fileName: String
     ): Uri? {
         val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
@@ -81,7 +79,7 @@ object MediaStoreSaver {
         if (!gifitDir.exists()) gifitDir.mkdirs()
 
         val file = File(gifitDir, fileName)
-        file.writeBytes(gifBytes)
+        gifFile.copyTo(file, overwrite = true)
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, fileName)

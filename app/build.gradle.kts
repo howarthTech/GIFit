@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,6 +8,19 @@ plugins {
     id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.parcelize")
 }
+
+// Release signing is read from keystore.properties (gitignored) or the matching
+// environment variables. If neither is present we fall back to the debug key so
+// `assembleRelease` still produces an installable APK for local testing.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+fun signingProp(key: String, env: String): String? =
+    keystoreProperties.getProperty(key) ?: System.getenv(env)
+val releaseStoreFile = signingProp("storeFile", "GIFIT_STORE_FILE")
 
 android {
     namespace = "com.gifit.app"
@@ -21,6 +36,17 @@ android {
         testInstrumentationRunner = "com.gifit.app.HiltTestRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (releaseStoreFile != null) {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingProp("storePassword", "GIFIT_STORE_PASSWORD")
+                keyAlias = signingProp("keyAlias", "GIFIT_KEY_ALIAS")
+                keyPassword = signingProp("keyPassword", "GIFIT_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -28,6 +54,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (releaseStoreFile != null) {
+                signingConfigs.getByName("release")
+            } else {
+                // No release keystore configured — sign with the debug key so the
+                // build is still installable. Do NOT distribute this artifact.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
