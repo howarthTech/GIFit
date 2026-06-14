@@ -39,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -212,10 +213,28 @@ fun PreviewScreen(
                     }
 
                     Box(
-                        modifier = Modifier.size(
-                            with(density) { contentWpx.toDp() },
-                            with(density) { contentHpx.toDp() }
-                        )
+                        modifier = Modifier
+                            .size(
+                                with(density) { contentWpx.toDp() },
+                                with(density) { contentHpx.toDp() }
+                            )
+                            .then(
+                                // Manipulate the overlay from anywhere on the preview, so
+                                // the gesture target doesn't depend on how long the text is.
+                                if (gifFile == null && overlayText.isNotBlank()) {
+                                    Modifier.pointerInput(frames, overlayText) {
+                                        detectTransformGestures { _, pan, zoom, rotation ->
+                                            overlayX = (overlayX + pan.x / contentWpx).coerceIn(0f, 1f)
+                                            overlayY = (overlayY + pan.y / contentHpx).coerceIn(0f, 1f)
+                                            overlaySize = (overlaySize * zoom).coerceIn(
+                                                TextOverlayStyle.MIN_SIZE_FRACTION,
+                                                TextOverlayStyle.MAX_SIZE_FRACTION
+                                            )
+                                            overlayRotation += rotation
+                                        }
+                                    }
+                                } else Modifier
+                            )
                     ) {
                         val generated = gifFile
                         if (generated != null) {
@@ -258,18 +277,6 @@ fun PreviewScreen(
                                         translationX = (overlayX - 0.5f) * contentWpx
                                         translationY = (overlayY - 0.5f) * contentHpx
                                         rotationZ = overlayRotation
-                                    }
-                                    .pointerInput(frames) {
-                                        detectTransformGestures { _, pan, zoom, rotation ->
-                                            overlayX = (overlayX + pan.x / contentWpx).coerceIn(0f, 1f)
-                                            overlayY = (overlayY + pan.y / contentHpx).coerceIn(0f, 1f)
-                                            overlaySize = (overlaySize * zoom).coerceIn(
-                                                TextOverlayStyle.MIN_SIZE_FRACTION,
-                                                TextOverlayStyle.MAX_SIZE_FRACTION
-                                            )
-                                            overlayRotation += rotation
-                                            if (gifFile != null) viewModel.clearGeneratedGif()
-                                        }
                                     }
                                     .background(
                                         Color.Black.copy(alpha = 0.35f),
@@ -314,6 +321,24 @@ fun PreviewScreen(
                 )
 
                 if (overlayText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Size slider (reliable regardless of pinch / text length)
+                    Text(
+                        text = "Text size",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = overlaySize,
+                        onValueChange = {
+                            overlaySize = it
+                            if (gifFile != null) viewModel.clearGeneratedGif()
+                        },
+                        valueRange = TextOverlayStyle.MIN_SIZE_FRACTION..TextOverlayStyle.MAX_SIZE_FRACTION,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Color swatches

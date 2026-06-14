@@ -219,6 +219,15 @@ fun FrameEditorSheet(
                                         translationY = (style.normY - 0.5f) * boxHpx
                                         rotationZ = style.rotationDegrees
                                     }
+                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+
+                            // Full-area gesture surface so pinch/drag/twist works anywhere,
+                            // independent of how long the text is.
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
                                     .pointerInput(frame.id) {
                                         detectTransformGestures { _, pan, zoom, rotation ->
                                             pushStyle(
@@ -234,8 +243,6 @@ fun FrameEditorSheet(
                                             )
                                         }
                                     }
-                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
                     }
@@ -337,6 +344,15 @@ fun FrameEditorSheet(
                 if (effectiveText.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text("Drag to move • pinch to resize • twist to rotate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    Spacer(Modifier.height(8.dp))
+                    Text("Text size", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = style.sizeFraction,
+                        onValueChange = { pushStyle(style.copy(sizeFraction = it)) },
+                        valueRange = TextOverlayStyle.MIN_SIZE_FRACTION..TextOverlayStyle.MAX_SIZE_FRACTION,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
