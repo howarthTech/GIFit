@@ -7,8 +7,9 @@ import kotlinx.parcelize.Parcelize
 data class GifSettings(
     val resolutionPreset: ResolutionPreset = ResolutionPreset.MEDIUM,
     val quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT,
-    val globalDelayMs: Int = 500,
-    val globalOverlayText: String = ""
+    val globalDelayMs: Int = 1500,
+    val globalOverlayText: String = "",
+    val dithering: Boolean = false
 ) : Parcelable
 
 enum class QuantizerType { MEDIAN_CUT, NEUQUANT }

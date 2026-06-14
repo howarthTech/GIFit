@@ -182,6 +182,9 @@ class MedianCutQuantizer(private val maxColors: Int = 256) : Quantizer {
         return bestIdx
     }
 
+    override fun nearestIndex(r: Int, g: Int, b: Int): Int =
+        mapPixel(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+
     /**
      * Map an entire ARGB pixel array to palette indices.
      */

@@ -39,4 +39,7 @@ class NeuQuantQuantizerAdapter(private val sampleFactor: Int = 10) : Quantizer {
         }
         return indices
     }
+
+    override fun nearestIndex(r: Int, g: Int, b: Int): Int =
+        neuQuant.map(b.coerceIn(0, 255), g.coerceIn(0, 255), r.coerceIn(0, 255))
 }

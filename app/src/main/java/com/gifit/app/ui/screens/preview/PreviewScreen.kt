@@ -5,8 +5,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -28,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -37,16 +43,26 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gifit.app.gif.GifEstimator
 import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
+import com.gifit.app.model.TextOverlayStyle
 import com.gifit.app.ui.components.AnimatedGifPreview
 import com.gifit.app.util.MediaStoreSaver
 
@@ -70,7 +86,13 @@ fun PreviewScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val intervalMs = gifSettings.globalDelayMs
-    val overlayText = gifSettings.globalOverlayText
+    var overlayText by rememberSaveable { mutableStateOf(gifSettings.globalOverlayText) }
+
+    // Manipulable overlay placement (canvas-relative so it maps 1:1 to the baked GIF).
+    var overlayX by rememberSaveable { mutableStateOf(TextOverlayStyle().normX) }
+    var overlayY by rememberSaveable { mutableStateOf(TextOverlayStyle().normY) }
+    var overlaySize by rememberSaveable { mutableStateOf(TextOverlayStyle().sizeFraction) }
+    var overlayRotation by rememberSaveable { mutableStateOf(TextOverlayStyle().rotationDegrees) }
 
     // Build per-frame delays for preview
     val perFrameDelays = remember(photoFrames, intervalMs) {
@@ -143,14 +165,92 @@ fun PreviewScreen(
                     }
                 }
             } else if (frames.isNotEmpty()) {
-                AnimatedGifPreview(
-                    frames = frames,
-                    delayMs = intervalMs,
-                    perFrameDelays = perFrameDelays,
+                val density = LocalDensity.current
+                // GIF canvas aspect ratio = largest frame dimensions (matches the encoder).
+                val canvasAspect = remember(frames) {
+                    val w = frames.maxOf { it.width }.toFloat()
+                    val h = frames.maxOf { it.height }.toFloat()
+                    if (h > 0f) w / h else 1f
+                }
+
+                BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                )
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Fit a content box of the canvas aspect ratio inside the available area
+                    // so on-screen normalized coords match the baked output exactly.
+                    val maxWpx = with(density) { maxWidth.toPx() }
+                    val maxHpx = with(density) { maxHeight.toPx() }
+                    val contentWpx: Float
+                    val contentHpx: Float
+                    if (maxWpx / maxHpx > canvasAspect) {
+                        contentHpx = maxHpx
+                        contentWpx = maxHpx * canvasAspect
+                    } else {
+                        contentWpx = maxWpx
+                        contentHpx = maxWpx / canvasAspect
+                    }
+
+                    Box(
+                        modifier = Modifier.size(
+                            with(density) { contentWpx.toDp() },
+                            with(density) { contentHpx.toDp() }
+                        )
+                    ) {
+                        AnimatedGifPreview(
+                            frames = frames,
+                            delayMs = intervalMs,
+                            perFrameDelays = perFrameDelays,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // WYSIWYG overlay: drag to move, pinch to resize, twist to rotate.
+                        if (overlayText.isNotBlank()) {
+                            val fontSizeSp = with(density) { (overlaySize * contentWpx).toSp() }
+                            Text(
+                                text = overlayText,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                fontSize = fontSizeSp,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .graphicsLayer {
+                                        translationX = (overlayX - 0.5f) * contentWpx
+                                        translationY = (overlayY - 0.5f) * contentHpx
+                                        rotationZ = overlayRotation
+                                    }
+                                    .pointerInput(frames) {
+                                        detectTransformGestures { _, pan, zoom, rotation ->
+                                            overlayX = (overlayX + pan.x / contentWpx).coerceIn(0f, 1f)
+                                            overlayY = (overlayY + pan.y / contentHpx).coerceIn(0f, 1f)
+                                            overlaySize = (overlaySize * zoom).coerceIn(
+                                                TextOverlayStyle.MIN_SIZE_FRACTION,
+                                                TextOverlayStyle.MAX_SIZE_FRACTION
+                                            )
+                                            overlayRotation += rotation
+                                            if (gifFile != null) viewModel.clearGeneratedGif()
+                                        }
+                                    }
+                                    .background(
+                                        Color.Black.copy(alpha = 0.35f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (overlayText.isNotBlank()) {
+                    Text(
+                        text = "Drag to move • pinch to resize • twist to rotate",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -161,13 +261,20 @@ fun PreviewScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                if (overlayText.isNotBlank()) {
-                    Text(
-                        text = "Text: \"$overlayText\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = overlayText,
+                    onValueChange = {
+                        overlayText = it
+                        // A generated GIF no longer matches the edited text.
+                        if (gifFile != null) viewModel.clearGeneratedGif()
+                    },
+                    label = { Text("Overlay text (optional)") },
+                    placeholder = { Text("Shown across all frames") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -204,7 +311,14 @@ fun PreviewScreen(
                                 viewModel.generateGif(
                                     context = context,
                                     photoFrames = photoFrames,
-                                    gifSettings = gifSettings
+                                    gifSettings = gifSettings,
+                                    globalOverlayText = overlayText,
+                                    overlayStyle = TextOverlayStyle(
+                                        normX = overlayX,
+                                        normY = overlayY,
+                                        sizeFraction = overlaySize,
+                                        rotationDegrees = overlayRotation
+                                    )
                                 )
                             },
                             modifier = Modifier.fillMaxWidth()

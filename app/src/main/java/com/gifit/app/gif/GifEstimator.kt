@@ -39,6 +39,25 @@ object GifEstimator {
         return headerOverhead + frameCount * (frameDataSize + perFrameOverhead)
     }
 
+    /** Estimated output above this size is flagged as "large" to the user. */
+    const val LARGE_THRESHOLD_BYTES = 5L * 1024 * 1024
+
+    /**
+     * A short cautionary message when the estimated GIF is large enough to be slow to
+     * generate, save, or share — or null when the output is comfortably sized.
+     */
+    fun sizeWarning(
+        frameCount: Int,
+        resolutionPreset: ResolutionPreset,
+        quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT
+    ): String? {
+        val bytes = estimateBytes(frameCount, resolutionPreset, quantizerType)
+        if (bytes < LARGE_THRESHOLD_BYTES) return null
+        val mb = "%.1f".format(bytes / (1024.0 * 1024.0))
+        return "Large GIF (~${mb}MB) — may be slow to generate and hard to share. " +
+            "Try a lower resolution or fewer frames."
+    }
+
     /**
      * Returns a human-readable size estimate string.
      */

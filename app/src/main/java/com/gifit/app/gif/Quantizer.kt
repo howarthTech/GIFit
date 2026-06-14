@@ -15,4 +15,11 @@ interface Quantizer {
      * Map an entire ARGB pixel array to palette indices.
      */
     fun mapPixels(argbPixels: IntArray): IntArray
+
+    /**
+     * Return the palette index of the color nearest to the given RGB triple.
+     * Inputs may fall slightly outside 0..255 (e.g. from error diffusion) and
+     * should be clamped by the implementation. Used by Floyd–Steinberg dithering.
+     */
+    fun nearestIndex(r: Int, g: Int, b: Int): Int
 }

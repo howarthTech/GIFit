@@ -11,6 +11,7 @@ import com.gifit.app.gif.AnimatedGifEncoder
 import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.model.QuantizerType
+import com.gifit.app.model.TextOverlayStyle
 import com.gifit.app.util.ImageResizer
 import com.gifit.app.util.MediaStoreSaver
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -111,7 +112,19 @@ class PreviewViewModel @Inject constructor(
         return result
     }
 
-    fun generateGif(context: Context, photoFrames: List<PhotoFrame>, gifSettings: GifSettings) {
+    /** Discard a previously generated GIF so the user can re-generate after edits. */
+    fun clearGeneratedGif() {
+        _gifFile.value = null
+        _savedUri.value = null
+    }
+
+    fun generateGif(
+        context: Context,
+        photoFrames: List<PhotoFrame>,
+        gifSettings: GifSettings,
+        globalOverlayText: String = gifSettings.globalOverlayText,
+        overlayStyle: TextOverlayStyle = TextOverlayStyle()
+    ) {
         val currentFrames = _frames.value
         if (currentFrames.size < 2) return
 
@@ -131,9 +144,9 @@ class PreviewViewModel @Inject constructor(
                         frame.delayMs ?: gifSettings.globalDelayMs
                     }
 
-                    // Build per-frame overlay texts
+                    // Build per-frame overlay texts (per-frame override wins over global)
                     val perFrameOverlays = photoFrames.map { frame ->
-                        frame.overlayText ?: gifSettings.globalOverlayText.ifBlank { null }
+                        frame.overlayText ?: globalOverlayText.ifBlank { null }
                     }
 
                     BufferedOutputStream(outFile.outputStream()).use { out ->
@@ -143,6 +156,8 @@ class PreviewViewModel @Inject constructor(
                             outputStream = out,
                             perFrameOverlays = perFrameOverlays,
                             quantizerType = gifSettings.quantizerType,
+                            overlayStyle = overlayStyle,
+                            dither = gifSettings.dithering,
                             onProgress = { current, total ->
                                 _progress.value = current.toFloat() / total
                             }

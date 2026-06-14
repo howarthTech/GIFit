@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.gifit.app.model.QuantizerType
+import com.gifit.app.model.TextOverlayStyle
 import java.io.BufferedOutputStream
 import java.io.OutputStream
 
@@ -21,6 +22,8 @@ class AnimatedGifEncoder {
         outputStream: OutputStream,
         perFrameOverlays: List<String?> = emptyList(),
         quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT,
+        overlayStyle: TextOverlayStyle = TextOverlayStyle(),
+        dither: Boolean = false,
         onProgress: ((currentFrame: Int, totalFrames: Int) -> Unit)? = null
     ) {
         require(frames.size >= 2) { "At least 2 frames required" }
@@ -36,7 +39,7 @@ class AnimatedGifEncoder {
             val normalized = normalizeToCanvas(frame, width, height)
             val overlayText = perFrameOverlays.getOrNull(index)
             val bitmap = if (!overlayText.isNullOrBlank()) {
-                drawTextOverlay(normalized, overlayText)
+                drawTextOverlay(normalized, overlayText, overlayStyle)
             } else {
                 normalized
             }
@@ -68,7 +71,11 @@ class AnimatedGifEncoder {
 
         // Encode each frame
         for (i in allArgbFrames.indices) {
-            val indexedPixels = quantizer.mapPixels(allArgbFrames[i])
+            val indexedPixels = if (dither) {
+                ditherPixels(allArgbFrames[i], width, height, palette, quantizer)
+            } else {
+                quantizer.mapPixels(allArgbFrames[i])
+            }
             val delayCs = toDelayCentiseconds(perFrameDelays.getOrElse(i) { 50 })
 
             GifWriter.writeGraphicControlExtension(out, delayCs)
@@ -90,6 +97,71 @@ class AnimatedGifEncoder {
      * treat delays below ~2cs as 10cs, so flooring sub-20ms delays to 0 produced
      * inconsistent playback speed.
      */
+    /**
+     * Map a frame to palette indices using Floyd–Steinberg error diffusion, which
+     * spreads quantization error to neighboring pixels to break up the visible banding
+     * a flat nearest-color mapping leaves on gradients. Uses two sliding error rows per
+     * channel to keep memory proportional to image width, not the whole frame.
+     */
+    private fun ditherPixels(
+        argb: IntArray,
+        width: Int,
+        height: Int,
+        palette: ByteArray,
+        quantizer: Quantizer
+    ): IntArray {
+        val indices = IntArray(argb.size)
+        var curR = FloatArray(width); var curG = FloatArray(width); var curB = FloatArray(width)
+        var nxtR = FloatArray(width); var nxtG = FloatArray(width); var nxtB = FloatArray(width)
+
+        for (y in 0 until height) {
+            nxtR.fill(0f); nxtG.fill(0f); nxtB.fill(0f)
+            for (x in 0 until width) {
+                val p = argb[y * width + x]
+                val r = ((p shr 16) and 0xFF) + curR[x]
+                val g = ((p shr 8) and 0xFF) + curG[x]
+                val b = (p and 0xFF) + curB[x]
+
+                val idx = quantizer.nearestIndex(
+                    r.toInt().coerceIn(0, 255),
+                    g.toInt().coerceIn(0, 255),
+                    b.toInt().coerceIn(0, 255)
+                )
+                indices[y * width + x] = idx
+
+                val pr = palette[idx * 3].toInt() and 0xFF
+                val pg = palette[idx * 3 + 1].toInt() and 0xFF
+                val pb = palette[idx * 3 + 2].toInt() and 0xFF
+                val er = r - pr
+                val eg = g - pg
+                val eb = b - pb
+
+                // 7/16 right, 3/16 below-left, 5/16 below, 1/16 below-right
+                if (x + 1 < width) {
+                    curR[x + 1] += er * 7f / 16f
+                    curG[x + 1] += eg * 7f / 16f
+                    curB[x + 1] += eb * 7f / 16f
+                    nxtR[x + 1] += er * 1f / 16f
+                    nxtG[x + 1] += eg * 1f / 16f
+                    nxtB[x + 1] += eb * 1f / 16f
+                }
+                if (x - 1 >= 0) {
+                    nxtR[x - 1] += er * 3f / 16f
+                    nxtG[x - 1] += eg * 3f / 16f
+                    nxtB[x - 1] += eb * 3f / 16f
+                }
+                nxtR[x] += er * 5f / 16f
+                nxtG[x] += eg * 5f / 16f
+                nxtB[x] += eb * 5f / 16f
+            }
+            // Slide: next row becomes current; reuse buffers.
+            val tR = curR; curR = nxtR; nxtR = tR
+            val tG = curG; curG = nxtG; nxtG = tG
+            val tB = curB; curB = nxtB; nxtB = tB
+        }
+        return indices
+    }
+
     private fun toDelayCentiseconds(delayMs: Int): Int {
         val cs = (delayMs + 5) / 10
         return cs.coerceAtLeast(2)
@@ -110,13 +182,14 @@ class AnimatedGifEncoder {
         return canvasBitmap
     }
 
-    private fun drawTextOverlay(source: Bitmap, text: String): Bitmap {
+    private fun drawTextOverlay(source: Bitmap, text: String, style: TextOverlayStyle): Bitmap {
         val copy = source.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(copy)
         val width = copy.width.toFloat()
         val height = copy.height.toFloat()
 
-        val textSize = width / 12f
+        // Size is a fraction of canvas width so it scales consistently with the preview.
+        val textSize = (style.sizeFraction * width).coerceAtLeast(1f)
 
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
@@ -124,7 +197,7 @@ class AnimatedGifEncoder {
             typeface = Typeface.DEFAULT_BOLD
             textAlign = Paint.Align.CENTER
             strokeWidth = textSize / 8f
-            style = Paint.Style.STROKE
+            this.style = Paint.Style.STROKE
         }
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -134,11 +207,18 @@ class AnimatedGifEncoder {
             textAlign = Paint.Align.CENTER
         }
 
-        val x = width / 2f
-        val y = height - textSize
+        // Center the text at the normalized anchor and rotate around that point so it
+        // matches the on-screen preview (which centers + rotates about the same point).
+        val cx = style.normX * width
+        val cy = style.normY * height
+        val fm = textPaint.fontMetrics
+        val baseline = cy - (fm.ascent + fm.descent) / 2f
 
-        canvas.drawText(text, x, y, shadowPaint)
-        canvas.drawText(text, x, y, textPaint)
+        canvas.save()
+        canvas.rotate(style.rotationDegrees, cx, cy)
+        canvas.drawText(text, cx, baseline, shadowPaint)
+        canvas.drawText(text, cx, baseline, textPaint)
+        canvas.restore()
 
         return copy
     }

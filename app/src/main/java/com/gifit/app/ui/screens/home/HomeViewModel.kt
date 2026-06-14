@@ -181,6 +181,11 @@ class HomeViewModel @Inject constructor(
         saveSettings()
     }
 
+    fun setDithering(enabled: Boolean) {
+        _gifSettings.value = _gifSettings.value.copy(dithering = enabled)
+        saveSettings()
+    }
+
     fun setInterval(ms: Int) {
         _gifSettings.value = _gifSettings.value.copy(globalDelayMs = ms)
         saveSettings()

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,8 +29,8 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -280,17 +281,30 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Text overlay input
-                OutlinedTextField(
-                    value = gifSettings.globalOverlayText,
-                    onValueChange = { viewModel.setOverlayText(it) },
-                    label = { Text("Global text overlay (optional)") },
-                    placeholder = { Text("Enter text to display on all frames") },
-                    singleLine = true,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Dithering",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Smoother gradients, larger file",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = gifSettings.dithering,
+                        onCheckedChange = { viewModel.setDithering(it) }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -312,6 +326,19 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
+                    val warning = GifEstimator.sizeWarning(
+                        frameCount = frames.size,
+                        resolutionPreset = gifSettings.resolutionPreset,
+                        quantizerType = gifSettings.quantizerType
+                    )
+                    if (warning != null) {
+                        Text(
+                            text = warning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(80.dp)) // Room for FAB
