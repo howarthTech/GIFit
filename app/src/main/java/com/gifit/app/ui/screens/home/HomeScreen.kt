@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,8 +52,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gifit.app.gif.GifEstimator
 import com.gifit.app.model.GifSettings
 import com.gifit.app.model.PhotoFrame
-import com.gifit.app.ui.components.CropDialog
-import com.gifit.app.ui.components.FrameEditDialog
+import com.gifit.app.model.TransitionType
+import com.gifit.app.ui.components.FrameEditorSheet
 import com.gifit.app.ui.components.IntervalSlider
 import com.gifit.app.ui.components.PhotoItem
 import com.gifit.app.ui.components.QualitySelector
@@ -74,7 +75,6 @@ fun HomeScreen(
     val hapticFeedback = LocalHapticFeedback.current
 
     var editingFrameId by remember { mutableStateOf<String?>(null) }
-    var croppingFrameId by remember { mutableStateOf<String?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 20)
@@ -97,35 +97,24 @@ fun HomeScreen(
         viewModel.reorderPhotos(from.index, to.index)
     }
 
-    // Frame edit bottom sheet
+    // Unified per-frame editor (transforms, crop, delay, overlay text + placement)
     editingFrameId?.let { frameId ->
         val frame = frames.find { it.id == frameId }
         val frameIndex = frames.indexOfFirst { it.id == frameId }
         if (frame != null) {
-            FrameEditDialog(
+            FrameEditorSheet(
+                frame = frame,
                 frameIndex = frameIndex,
-                currentDelayMs = frame.delayMs,
                 globalDelayMs = gifSettings.globalDelayMs,
-                currentOverlayText = frame.overlayText,
                 globalOverlayText = gifSettings.globalOverlayText,
-                onDismiss = { editingFrameId = null },
+                onRotate = { viewModel.rotatePhoto(frameId) },
+                onFlipHorizontal = { viewModel.flipPhotoHorizontal(frameId) },
+                onFlipVertical = { viewModel.flipPhotoVertical(frameId) },
                 onDelayChanged = { viewModel.setPerFrameDelay(frameId, it) },
-                onOverlayChanged = { viewModel.setPerFrameOverlay(frameId, it) }
-            )
-        }
-    }
-
-    // Crop bottom sheet
-    croppingFrameId?.let { frameId ->
-        val frame = frames.find { it.id == frameId }
-        if (frame != null) {
-            CropDialog(
-                uri = frame.uri,
-                currentCrop = frame.cropRect,
-                onDismiss = { croppingFrameId = null },
-                onCropApplied = { rect ->
-                    viewModel.setCropRect(frameId, rect)
-                }
+                onOverlayTextChanged = { viewModel.setPerFrameOverlay(frameId, it) },
+                onCropChanged = { viewModel.setCropRect(frameId, it) },
+                onStyleChanged = { viewModel.setOverlayStyle(frameId, it) },
+                onDismiss = { editingFrameId = null }
             )
         }
     }
@@ -304,6 +293,25 @@ fun HomeScreen(
                         checked = gifSettings.dithering,
                         onCheckedChange = { viewModel.setDithering(it) }
                     )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Text(
+                        text = "Transition",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (type in TransitionType.entries) {
+                            FilterChip(
+                                selected = gifSettings.transitionType == type,
+                                onClick = { viewModel.setTransition(type) },
+                                label = { Text(type.label) }
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))

@@ -17,7 +17,8 @@ data class PhotoFrameState(
     val cropLeft: Float? = null,
     val cropTop: Float? = null,
     val cropRight: Float? = null,
-    val cropBottom: Float? = null
+    val cropBottom: Float? = null,
+    val overlayStyle: TextOverlayStyle? = null
 ) : Parcelable {
     fun toPhotoFrame(): PhotoFrame = PhotoFrame(
         id = id,
@@ -29,7 +30,8 @@ data class PhotoFrameState(
         overlayText = overlayText,
         cropRect = if (cropLeft != null && cropTop != null && cropRight != null && cropBottom != null) {
             RectF(cropLeft, cropTop, cropRight, cropBottom)
-        } else null
+        } else null,
+        overlayStyle = overlayStyle
     )
 }
 
@@ -44,5 +46,6 @@ fun PhotoFrame.toState(): PhotoFrameState = PhotoFrameState(
     cropLeft = cropRect?.left,
     cropTop = cropRect?.top,
     cropRight = cropRect?.right,
-    cropBottom = cropRect?.bottom
+    cropBottom = cropRect?.bottom,
+    overlayStyle = overlayStyle
 )

@@ -5,8 +5,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
+import com.gifit.app.model.OverlayFont
 import com.gifit.app.model.QuantizerType
 import com.gifit.app.model.TextOverlayStyle
+import com.gifit.app.model.TransitionType
 import java.io.BufferedOutputStream
 import java.io.OutputStream
 
@@ -16,6 +18,11 @@ import java.io.OutputStream
  */
 class AnimatedGifEncoder {
 
+    companion object {
+        /** Delay (ms) per transition tween frame — ~25fps for smooth motion. */
+        private const val TWEEN_DELAY_MS = 40
+    }
+
     fun encode(
         frames: List<Bitmap>,
         perFrameDelays: List<Int>,
@@ -23,7 +30,10 @@ class AnimatedGifEncoder {
         perFrameOverlays: List<String?> = emptyList(),
         quantizerType: QuantizerType = QuantizerType.MEDIAN_CUT,
         overlayStyle: TextOverlayStyle = TextOverlayStyle(),
+        perFrameOverlayStyles: List<TextOverlayStyle?> = emptyList(),
         dither: Boolean = false,
+        transitionType: TransitionType = TransitionType.NONE,
+        transitionFrames: Int = 6,
         onProgress: ((currentFrame: Int, totalFrames: Int) -> Unit)? = null
     ) {
         require(frames.size >= 2) { "At least 2 frames required" }
@@ -38,8 +48,9 @@ class AnimatedGifEncoder {
         val allArgbFrames = frames.mapIndexed { index, frame ->
             val normalized = normalizeToCanvas(frame, width, height)
             val overlayText = perFrameOverlays.getOrNull(index)
+            val style = perFrameOverlayStyles.getOrNull(index) ?: overlayStyle
             val bitmap = if (!overlayText.isNullOrBlank()) {
-                drawTextOverlay(normalized, overlayText, overlayStyle)
+                drawTextOverlay(normalized, overlayText, style)
             } else {
                 normalized
             }
@@ -69,26 +80,75 @@ class AnimatedGifEncoder {
         GifWriter.writeColorTable(out, palette)
         GifWriter.writeNetscapeExtension(out, loops = 0)
 
-        // Encode each frame
-        for (i in allArgbFrames.indices) {
+        // Emit one frame: quantize (optionally dithered), then write its GIF blocks.
+        fun writeFrame(pixels: IntArray, delayMs: Int) {
             val indexedPixels = if (dither) {
-                ditherPixels(allArgbFrames[i], width, height, palette, quantizer)
+                ditherPixels(pixels, width, height, palette, quantizer)
             } else {
-                quantizer.mapPixels(allArgbFrames[i])
+                quantizer.mapPixels(pixels)
             }
-            val delayCs = toDelayCentiseconds(perFrameDelays.getOrElse(i) { 50 })
-
-            GifWriter.writeGraphicControlExtension(out, delayCs)
+            GifWriter.writeGraphicControlExtension(out, toDelayCentiseconds(delayMs))
             GifWriter.writeImageDescriptor(out, width, height)
+            LzwEncoder(indexedPixels, 8).encode(out)
+        }
 
-            val lzw = LzwEncoder(indexedPixels, 8)
-            lzw.encode(out)
+        val tweenCount = if (transitionType == TransitionType.NONE) 0 else transitionFrames
 
+        // Encode each real frame, inserting transition tweens between consecutive photos.
+        // Tweens are generated on demand and discarded so peak memory stays one frame.
+        for (i in allArgbFrames.indices) {
+            writeFrame(allArgbFrames[i], perFrameDelays.getOrElse(i) { 500 })
             onProgress?.invoke(i + 1, allArgbFrames.size)
+
+            if (tweenCount > 0 && i < allArgbFrames.lastIndex) {
+                val cur = allArgbFrames[i]
+                val next = allArgbFrames[i + 1]
+                for (k in 1..tweenCount) {
+                    val t = k.toFloat() / (tweenCount + 1)
+                    writeFrame(makeTween(cur, next, t, transitionType, width, height), TWEEN_DELAY_MS)
+                }
+            }
         }
 
         GifWriter.writeTrailer(out)
         out.flush()
+    }
+
+    /** Build a single interpolated frame between [a] and [b] at progress [t] in 0..1. */
+    private fun makeTween(
+        a: IntArray,
+        b: IntArray,
+        t: Float,
+        type: TransitionType,
+        width: Int,
+        height: Int
+    ): IntArray {
+        val out = IntArray(a.size)
+        when (type) {
+            TransitionType.CROSSFADE -> {
+                val inv = 1f - t
+                for (i in a.indices) {
+                    val ca = a[i]; val cb = b[i]
+                    val r = (((ca shr 16) and 0xFF) * inv + ((cb shr 16) and 0xFF) * t).toInt()
+                    val g = (((ca shr 8) and 0xFF) * inv + ((cb shr 8) and 0xFF) * t).toInt()
+                    val bl = ((ca and 0xFF) * inv + (cb and 0xFF) * t).toInt()
+                    out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+                }
+            }
+            TransitionType.SLIDE -> {
+                // b slides in from the right, pushing a off to the left.
+                val shift = (t * width).toInt()
+                for (y in 0 until height) {
+                    val row = y * width
+                    for (x in 0 until width) {
+                        val src = x + shift
+                        out[row + x] = if (src < width) a[row + src] else b[row + (src - width)]
+                    }
+                }
+            }
+            TransitionType.NONE -> System.arraycopy(a, 0, out, 0, a.size)
+        }
+        return out
     }
 
     /**
@@ -190,20 +250,24 @@ class AnimatedGifEncoder {
 
         // Size is a fraction of canvas width so it scales consistently with the preview.
         val textSize = (style.sizeFraction * width).coerceAtLeast(1f)
+        val typeface = typefaceFor(style.font)
+        // Keep a dark outline for legibility on any background, unless the text itself
+        // is dark — then outline in white instead.
+        val outlineColor = if (isDark(style.color)) Color.WHITE else Color.BLACK
 
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
+            color = outlineColor
             this.textSize = textSize
-            typeface = Typeface.DEFAULT_BOLD
+            this.typeface = typeface
             textAlign = Paint.Align.CENTER
             strokeWidth = textSize / 8f
             this.style = Paint.Style.STROKE
         }
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
+            color = style.color
             this.textSize = textSize
-            typeface = Typeface.DEFAULT_BOLD
+            this.typeface = typeface
             textAlign = Paint.Align.CENTER
         }
 
@@ -221,5 +285,20 @@ class AnimatedGifEncoder {
         canvas.restore()
 
         return copy
+    }
+
+    private fun typefaceFor(font: OverlayFont): Typeface = when (font) {
+        OverlayFont.SANS -> Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        OverlayFont.SERIF -> Typeface.create(Typeface.SERIF, Typeface.BOLD)
+        OverlayFont.MONO -> Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        OverlayFont.CONDENSED -> Typeface.create("sans-serif-condensed", Typeface.BOLD)
+    }
+
+    private fun isDark(color: Int): Boolean {
+        val r = (color shr 16) and 0xFF
+        val g = (color shr 8) and 0xFF
+        val b = color and 0xFF
+        // Perceived luminance (Rec. 601).
+        return (0.299 * r + 0.587 * g + 0.114 * b) < 110
     }
 }

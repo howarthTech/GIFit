@@ -9,6 +9,8 @@ import com.gifit.app.model.PhotoFrame
 import com.gifit.app.model.PhotoFrameState
 import com.gifit.app.model.QuantizerType
 import com.gifit.app.model.ResolutionPreset
+import com.gifit.app.model.TextOverlayStyle
+import com.gifit.app.model.TransitionType
 import com.gifit.app.model.toState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +173,12 @@ class HomeViewModel @Inject constructor(
         })
     }
 
+    fun setOverlayStyle(frameId: String, style: TextOverlayStyle?) {
+        updateFrames(_frames.value.map { frame ->
+            if (frame.id == frameId) frame.copy(overlayStyle = style) else frame
+        })
+    }
+
     fun setResolution(preset: ResolutionPreset) {
         _gifSettings.value = _gifSettings.value.copy(resolutionPreset = preset)
         saveSettings()
@@ -183,6 +191,11 @@ class HomeViewModel @Inject constructor(
 
     fun setDithering(enabled: Boolean) {
         _gifSettings.value = _gifSettings.value.copy(dithering = enabled)
+        saveSettings()
+    }
+
+    fun setTransition(type: TransitionType) {
+        _gifSettings.value = _gifSettings.value.copy(transitionType = type)
         saveSettings()
     }
 

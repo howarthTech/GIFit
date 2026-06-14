@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,11 +53,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,6 +67,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gifit.app.gif.GifEstimator
 import com.gifit.app.model.GifSettings
+import com.gifit.app.model.OverlayFont
 import com.gifit.app.model.PhotoFrame
 import com.gifit.app.model.TextOverlayStyle
 import com.gifit.app.ui.components.AnimatedGifPreview
@@ -93,6 +100,14 @@ fun PreviewScreen(
     var overlayY by rememberSaveable { mutableStateOf(TextOverlayStyle().normY) }
     var overlaySize by rememberSaveable { mutableStateOf(TextOverlayStyle().sizeFraction) }
     var overlayRotation by rememberSaveable { mutableStateOf(TextOverlayStyle().rotationDegrees) }
+    var overlayColor by rememberSaveable { mutableStateOf(TextOverlayStyle().color) }
+    var overlayFont by rememberSaveable { mutableStateOf(TextOverlayStyle().font) }
+
+    val overlayFontFamily = when (overlayFont) {
+        OverlayFont.SERIF -> FontFamily.Serif
+        OverlayFont.MONO -> FontFamily.Monospace
+        else -> FontFamily.SansSerif
+    }
 
     // Build per-frame delays for preview
     val perFrameDelays = remember(photoFrames, intervalMs) {
@@ -211,8 +226,9 @@ fun PreviewScreen(
                             val fontSizeSp = with(density) { (overlaySize * contentWpx).toSp() }
                             Text(
                                 text = overlayText,
-                                color = Color.White,
+                                color = Color(overlayColor),
                                 fontWeight = FontWeight.Bold,
+                                fontFamily = overlayFontFamily,
                                 textAlign = TextAlign.Center,
                                 fontSize = fontSizeSp,
                                 modifier = Modifier
@@ -276,6 +292,53 @@ fun PreviewScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (overlayText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Color swatches
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (swatch in TextOverlayStyle.COLOR_SWATCHES) {
+                            val selected = swatch == overlayColor
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(swatch))
+                                    .border(
+                                        width = if (selected) 3.dp else 1.dp,
+                                        color = if (selected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline,
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        overlayColor = swatch
+                                        if (gifFile != null) viewModel.clearGeneratedGif()
+                                    }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Font chips
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (font in OverlayFont.entries) {
+                            FilterChip(
+                                selected = font == overlayFont,
+                                onClick = {
+                                    overlayFont = font
+                                    if (gifFile != null) viewModel.clearGeneratedGif()
+                                },
+                                label = { Text(font.label) }
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (gifFile == null) {
@@ -317,7 +380,9 @@ fun PreviewScreen(
                                         normX = overlayX,
                                         normY = overlayY,
                                         sizeFraction = overlaySize,
-                                        rotationDegrees = overlayRotation
+                                        rotationDegrees = overlayRotation,
+                                        color = overlayColor,
+                                        font = overlayFont
                                     )
                                 )
                             },

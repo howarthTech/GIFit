@@ -149,6 +149,9 @@ class PreviewViewModel @Inject constructor(
                         frame.overlayText ?: globalOverlayText.ifBlank { null }
                     }
 
+                    // Per-frame style override; null entries fall back to the global style.
+                    val perFrameOverlayStyles = photoFrames.map { it.overlayStyle }
+
                     BufferedOutputStream(outFile.outputStream()).use { out ->
                         encoder.encode(
                             frames = currentFrames,
@@ -157,7 +160,9 @@ class PreviewViewModel @Inject constructor(
                             perFrameOverlays = perFrameOverlays,
                             quantizerType = gifSettings.quantizerType,
                             overlayStyle = overlayStyle,
+                            perFrameOverlayStyles = perFrameOverlayStyles,
                             dither = gifSettings.dithering,
+                            transitionType = gifSettings.transitionType,
                             onProgress = { current, total ->
                                 _progress.value = current.toFloat() / total
                             }

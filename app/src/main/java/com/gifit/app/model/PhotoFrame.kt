@@ -12,5 +12,7 @@ data class PhotoFrame(
     val flipVertical: Boolean = false,
     val delayMs: Int? = null,
     val overlayText: String? = null,
-    val cropRect: RectF? = null
+    val cropRect: RectF? = null,
+    /** Per-frame overlay placement/color/font; null falls back to the global style. */
+    val overlayStyle: TextOverlayStyle? = null
 )
