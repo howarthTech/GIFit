@@ -236,6 +236,7 @@ fun PreviewScreen(
                                 frames = frames,
                                 delayMs = intervalMs,
                                 perFrameDelays = perFrameDelays,
+                                transitionType = gifSettings.transitionType,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
