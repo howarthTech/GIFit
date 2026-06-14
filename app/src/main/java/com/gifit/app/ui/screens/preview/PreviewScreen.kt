@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -65,6 +66,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.gifit.app.gif.GifEstimator
 import com.gifit.app.model.GifSettings
 import com.gifit.app.model.OverlayFont
@@ -214,15 +217,32 @@ fun PreviewScreen(
                             with(density) { contentHpx.toDp() }
                         )
                     ) {
-                        AnimatedGifPreview(
-                            frames = frames,
-                            delayMs = intervalMs,
-                            perFrameDelays = perFrameDelays,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        val generated = gifFile
+                        if (generated != null) {
+                            // Show the real generated GIF — true output incl. transitions,
+                            // baked text, and dithering. lastModified busts Coil's cache.
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(generated)
+                                    .memoryCacheKey(generated.path + generated.lastModified())
+                                    .diskCacheKey(generated.path + generated.lastModified())
+                                    .build(),
+                                contentDescription = "Generated GIF preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            AnimatedGifPreview(
+                                frames = frames,
+                                delayMs = intervalMs,
+                                perFrameDelays = perFrameDelays,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
                         // WYSIWYG overlay: drag to move, pinch to resize, twist to rotate.
-                        if (overlayText.isNotBlank()) {
+                        // Only while editing — once generated, text is baked into the GIF.
+                        if (generated == null && overlayText.isNotBlank()) {
                             val fontSizeSp = with(density) { (overlaySize * contentWpx).toSp() }
                             Text(
                                 text = overlayText,
@@ -260,7 +280,7 @@ fun PreviewScreen(
                     }
                 }
 
-                if (overlayText.isNotBlank()) {
+                if (gifFile == null && overlayText.isNotBlank()) {
                     Text(
                         text = "Drag to move • pinch to resize • twist to rotate",
                         style = MaterialTheme.typography.labelSmall,

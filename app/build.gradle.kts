@@ -101,6 +101,7 @@ dependencies {
 
     // Image loading
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
+    implementation("io.coil-kt.coil3:coil-gif:3.0.4")
 
     // Drag-to-reorder
     implementation("sh.calvin.reorderable:reorderable:2.4.2")
