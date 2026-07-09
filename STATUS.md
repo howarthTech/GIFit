@@ -1,9 +1,12 @@
 # GIFit — Status
 
 ## Status
-in build — Play Store release prep in progress, not yet submitted
+in build — live on Google Play Closed Testing (Alpha); not yet in production
 
 ## Recently shipped
+- **Published to Google Play Closed Testing (Alpha) on 2026-07-09** — signed AAB
+  (versionCode 1, 1.0), store listing, content rating, and Data Safety all accepted by review.
+  Next: add testers + opt-in link, shake it down, then promote the same bundle to Production.
 - Reconciled a month-long divergence between `main` and an abandoned `master` branch (both had
   independently built overlay-text systems and independent "remove dead service / sign release"
   cleanups). Kept `main` — the more mature line — as the base, ported forward `master`'s clean,
