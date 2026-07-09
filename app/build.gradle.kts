@@ -51,6 +51,15 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Bundle native debug symbols (for the AndroidX .so pulled in by
+            // dependencies) so Play can symbolicate any native crash/ANR and
+            // the "no debug symbols" upload warning goes away.
+            // NOTE: requires the Android NDK to be installed (AGP uses its
+            // objcopy to extract symbols); without an NDK this is a silent
+            // no-op and the bundle ships without symbols.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
