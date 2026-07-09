@@ -69,6 +69,27 @@ Convenience copy: `/home/darrell/Desktop/GIFit-debug.apk`
 
 ## Known / Potential Follow-ups
 - Unit/instrumentation tests (test dirs exist but empty)
-- Signed release build (currently only debug)
 - Transition animations between individual photo edits
 - Larger overlay-text styling options (font, color, position)
+
+## Branch Reconciliation & Play Store Prep (2026-07-09)
+`main` and a since-abandoned `master` branch had diverged since 2026-06-13, each independently
+building an overlay-text system and each independently doing a "remove dead service / add
+signing" cleanup. `main` was kept as the base (more mature: per-frame `TextOverlayStyle`,
+`FrameEditorSheet`, mixed-dimension encoder crash fix, dithering, transitions). Ported forward
+from `master` on top of `main`:
+- App icon redesign (white film-strip + play triangle on purple gradient)
+- `imePadding()` keyboard fix on `HomeScreen`
+- Root `build.gradle.kts` build-output redirect (`C:/GITit_build`) to avoid Google Drive sync locks
+- Delay sliders (`IntervalSlider`, `FrameEditorSheet`) bumped from 3.0s/28 steps to 10.0s/98 steps
+
+Added net-new on top of `main` for Play Store readiness:
+- `isShrinkResources = true` alongside existing R8 minification for release builds
+- `OutOfMemoryError` handling around image load / GIF generate in `PreviewViewModel`, with a
+  friendly error message instead of a crash
+- `strings.xml` (`app_name`), manifest label now references it
+- `PRIVACY_POLICY.md` + `docs/privacy-policy.html` (styled page for GitHub Pages hosting)
+
+`main` already had (as of commit `a1ffba2`, 2026-06-13): dead `GifEncodingService` + its 3
+permissions removed, and a release `signingConfig` reading `keystore.properties`/env vars with a
+debug-key fallback. See `STATUS.md` for the Play Console punch list.

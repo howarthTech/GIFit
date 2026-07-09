@@ -306,8 +306,8 @@ fun FrameEditorSheet(
                         useCustomDelay = true
                         onDelayChanged((it * 1000).roundToInt())
                     },
-                    valueRange = 0.1f..3.0f,
-                    steps = 28,
+                    valueRange = 0.1f..10.0f,
+                    steps = 98,
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (useCustomDelay) {

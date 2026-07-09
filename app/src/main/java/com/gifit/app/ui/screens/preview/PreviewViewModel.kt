@@ -66,6 +66,8 @@ class PreviewViewModel @Inject constructor(
                     }
                 }
                 _frames.value = bitmaps
+            } catch (e: OutOfMemoryError) {
+                _error.value = "Not enough memory to load these images. Try fewer photos or a lower resolution."
             } catch (e: Exception) {
                 _error.value = "Failed to load images: ${e.message}"
             } finally {
@@ -172,6 +174,8 @@ class PreviewViewModel @Inject constructor(
                 }
                 _gifFile.value = file
                 _progress.value = 1f
+            } catch (e: OutOfMemoryError) {
+                _error.value = "Not enough memory to generate this GIF. Try fewer frames or a lower resolution."
             } catch (e: Exception) {
                 _error.value = "Failed to generate GIF: ${e.message}"
             } finally {

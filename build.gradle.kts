@@ -6,3 +6,8 @@ plugins {
     id("com.google.devtools.ksp") version "2.1.0-1.0.29" apply false
     id("org.jetbrains.kotlin.plugin.parcelize") version "2.1.0" apply false
 }
+
+// Move build output outside Google Drive to prevent sync locking during builds
+subprojects {
+    layout.buildDirectory.set(File("C:/GITit_build/${project.name}"))
+}
