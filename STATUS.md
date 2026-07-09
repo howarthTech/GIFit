@@ -19,12 +19,12 @@ in build — Play Store release prep in progress, not yet submitted
 - Drafted `PRIVACY_POLICY.md` and a styled `docs/privacy-policy.html` for GitHub Pages hosting.
 - Release keystore (`gifit-release.jks`, repo root, gitignored) generated, backed up externally,
   and verified against a real signed `assembleRelease` build.
+- Published the privacy policy: GitHub Pages enabled on `main` serving `/docs`, live at
+  https://howarthtech.github.io/GIFit/privacy-policy.html
 
 ## Next
-- **Enable GitHub Pages** on this repo (Settings → Pages → Deploy from branch → serve `/docs`)
-  so `docs/privacy-policy.html` goes live, then link that URL in Play Console's Data Safety
-  section.
-- **Play Console setup**: create the app listing, fill out Data Safety (answer: no data
+- **Play Console setup**: create the app listing, use the privacy policy URL above, fill out
+  Data Safety (answer: no data
   collected/shared), content rating questionnaire, and a store listing (screenshots, short/full
   description, feature graphic).
 - Bump `versionCode`/`versionName` in `app/build.gradle.kts` when actually cutting the first
