@@ -16,5 +16,8 @@ keystore.properties
 *.jks
 *.keystore
 
-# Built APKs dropped in the project folder for sideloading (synced via Drive)
+# Built artifacts kept in the project folder for sideloading/upload (synced via
+# Drive) — deliverables live in dist/, but never get committed to the repo.
 *.apk
+*.aab
+/dist/
