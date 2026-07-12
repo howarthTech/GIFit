@@ -58,6 +58,12 @@ class PreviewViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+            // Starting a fresh frame set: drop the previously loaded frames and
+            // any GIF generated from them so nothing from an earlier project
+            // lingers in the preview or the save/share state.
+            _frames.value = emptyList()
+            _gifFile.value = null
+            _savedUri.value = null
             try {
                 val bitmaps = withContext(Dispatchers.IO) {
                     photoFrames.map { frame ->

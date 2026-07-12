@@ -124,10 +124,12 @@ fun PreviewScreen(
         if (granted) viewModel.saveGif(context)
     }
 
+    // Reload whenever the incoming frame set changes. PreviewViewModel is
+    // activity-scoped and survives Home<->Preview navigation, so guarding this
+    // on frames.isEmpty() would keep showing the PREVIOUS project's frames when
+    // the user clears the images and picks new ones.
     LaunchedEffect(photoFrames) {
-        if (frames.isEmpty()) {
-            viewModel.loadFrames(context, photoFrames, gifSettings.resolutionPreset.maxWidth)
-        }
+        viewModel.loadFrames(context, photoFrames, gifSettings.resolutionPreset.maxWidth)
     }
 
     LaunchedEffect(error) {

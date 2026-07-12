@@ -52,8 +52,12 @@ fun AnimatedGifPreview(
         }
     }
 
-    val current = frames[index].asImageBitmap()
-    val next = frames[(index + 1) % frames.size].asImageBitmap()
+    // `index` is remembered across frame-set changes; the LaunchedEffect resets
+    // it to 0, but that runs after this composition, so clamp defensively in case
+    // a newly loaded, shorter frame set is drawn before the reset lands.
+    val safeIndex = index.coerceIn(0, frames.lastIndex)
+    val current = frames[safeIndex].asImageBitmap()
+    val next = frames[(safeIndex + 1) % frames.size].asImageBitmap()
     val t = progress.value
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
