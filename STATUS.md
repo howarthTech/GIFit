@@ -4,6 +4,11 @@
 in build — 1.1 (vc3) built and ready to upload to the Production draft (first public release)
 
 ## Recently shipped
+- **Portfolio pack dropped** (2026-07-12) at
+  `Howarth Tech Solutions\_Company\marketing\portfolio-inbox\gifit\` — pack.md (Overview /
+  Key features / Technical highlights / What it demonstrates), 2880×1620 hero, OG image,
+  512 icon, 4 raw phone screenshots. Marked `Status: draft`; flip to `ready` + drop the
+  draft note in pack.md once the Play listing is live.
 - **1.1 (versionCode 3)** (2026-07-12): overlay fonts expanded 4 → 16 device system font
   families (casual, cursive, small caps, typewriter, weights, italics — all offline); removed
   the translucent background chip behind preview text and replaced it with the same
