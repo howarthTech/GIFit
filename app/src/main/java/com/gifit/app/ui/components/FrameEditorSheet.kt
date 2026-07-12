@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.RotateRight
@@ -31,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -58,7 +59,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -199,19 +199,15 @@ fun FrameEditorSheet(
 
                         val effectiveText = if (useCustomText) overlayText else globalOverlayText
                         if (effectiveText.isNotBlank()) {
-                            val fontFamily = when (style.font) {
-                                OverlayFont.SERIF -> FontFamily.Serif
-                                OverlayFont.MONO -> FontFamily.Monospace
-                                else -> FontFamily.SansSerif
-                            }
-                            val fontSizeSp = with(density) { (style.sizeFraction * boxWpx).toSp() }
-                            Text(
-                                text = effectiveText,
-                                color = Color(style.color),
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = fontFamily,
-                                textAlign = TextAlign.Center,
-                                fontSize = fontSizeSp,
+                            // Same Typeface the encoder bakes with; outline + fill like the
+                            // encoder instead of a background chip, so this is true WYSIWYG.
+                            val fontFamily = remember(style.font) { FontFamily(style.font.typeface()) }
+                            val fontSizePx = style.sizeFraction * boxWpx
+                            val fontSizeSp = with(density) { fontSizePx.toSp() }
+                            val outlineColor =
+                                if (TextOverlayStyle.isDarkColor(style.color)) Color.White
+                                else Color.Black
+                            Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .graphicsLayer {
@@ -219,9 +215,25 @@ fun FrameEditorSheet(
                                         translationY = (style.normY - 0.5f) * boxHpx
                                         rotationZ = style.rotationDegrees
                                     }
-                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            ) {
+                                Text(
+                                    text = effectiveText,
+                                    color = outlineColor,
+                                    fontFamily = fontFamily,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = fontSizeSp,
+                                    style = LocalTextStyle.current.copy(
+                                        drawStyle = Stroke(width = fontSizePx / 8f)
+                                    )
+                                )
+                                Text(
+                                    text = effectiveText,
+                                    color = Color(style.color),
+                                    fontFamily = fontFamily,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = fontSizeSp
+                                )
+                            }
 
                             // Full-area gesture surface so pinch/drag/twist works anywhere,
                             // independent of how long the text is.
@@ -374,12 +386,23 @@ fun FrameEditorSheet(
                     }
 
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Scrollable font row, each label drawn in its own typeface.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
                         for (font in OverlayFont.entries) {
                             FilterChip(
                                 selected = font == style.font,
                                 onClick = { pushStyle(style.copy(font = font)) },
-                                label = { Text(font.label) }
+                                label = {
+                                    Text(
+                                        font.label,
+                                        fontFamily = remember(font) { FontFamily(font.typeface()) }
+                                    )
+                                }
                             )
                         }
                     }

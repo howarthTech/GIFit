@@ -4,8 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Typeface
-import com.gifit.app.model.OverlayFont
 import com.gifit.app.model.QuantizerType
 import com.gifit.app.model.TextOverlayStyle
 import com.gifit.app.model.TransitionType
@@ -250,10 +248,10 @@ class AnimatedGifEncoder {
 
         // Size is a fraction of canvas width so it scales consistently with the preview.
         val textSize = (style.sizeFraction * width).coerceAtLeast(1f)
-        val typeface = typefaceFor(style.font)
+        val typeface = style.font.typeface()
         // Keep a dark outline for legibility on any background, unless the text itself
         // is dark — then outline in white instead.
-        val outlineColor = if (isDark(style.color)) Color.WHITE else Color.BLACK
+        val outlineColor = if (TextOverlayStyle.isDarkColor(style.color)) Color.WHITE else Color.BLACK
 
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = outlineColor
@@ -287,18 +285,4 @@ class AnimatedGifEncoder {
         return copy
     }
 
-    private fun typefaceFor(font: OverlayFont): Typeface = when (font) {
-        OverlayFont.SANS -> Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        OverlayFont.SERIF -> Typeface.create(Typeface.SERIF, Typeface.BOLD)
-        OverlayFont.MONO -> Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-        OverlayFont.CONDENSED -> Typeface.create("sans-serif-condensed", Typeface.BOLD)
-    }
-
-    private fun isDark(color: Int): Boolean {
-        val r = (color shr 16) and 0xFF
-        val g = (color shr 8) and 0xFF
-        val b = color and 0xFF
-        // Perceived luminance (Rec. 601).
-        return (0.299 * r + 0.587 * g + 0.114 * b) < 110
-    }
 }

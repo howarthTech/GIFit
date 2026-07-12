@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -35,6 +36,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,13 +58,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -107,11 +109,8 @@ fun PreviewScreen(
     var overlayColor by rememberSaveable { mutableStateOf(TextOverlayStyle().color) }
     var overlayFont by rememberSaveable { mutableStateOf(TextOverlayStyle().font) }
 
-    val overlayFontFamily = when (overlayFont) {
-        OverlayFont.SERIF -> FontFamily.Serif
-        OverlayFont.MONO -> FontFamily.Monospace
-        else -> FontFamily.SansSerif
-    }
+    // Same Typeface the encoder bakes with, so the preview font is exact.
+    val overlayFontFamily = remember(overlayFont) { FontFamily(overlayFont.typeface()) }
 
     // Build per-frame delays for preview
     val perFrameDelays = remember(photoFrames, intervalMs) {
@@ -264,15 +263,15 @@ fun PreviewScreen(
 
                         // WYSIWYG overlay: drag to move, pinch to resize, twist to rotate.
                         // Only while editing — once generated, text is baked into the GIF.
+                        // Rendered as outline + fill exactly like the encoder (no
+                        // background chip), so the preview matches the baked output.
                         if (generated == null && overlayText.isNotBlank()) {
-                            val fontSizeSp = with(density) { (overlaySize * contentWpx).toSp() }
-                            Text(
-                                text = overlayText,
-                                color = Color(overlayColor),
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = overlayFontFamily,
-                                textAlign = TextAlign.Center,
-                                fontSize = fontSizeSp,
+                            val fontSizePx = overlaySize * contentWpx
+                            val fontSizeSp = with(density) { fontSizePx.toSp() }
+                            val outlineColor =
+                                if (TextOverlayStyle.isDarkColor(overlayColor)) Color.White
+                                else Color.Black
+                            Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .graphicsLayer {
@@ -280,12 +279,26 @@ fun PreviewScreen(
                                         translationY = (overlayY - 0.5f) * contentHpx
                                         rotationZ = overlayRotation
                                     }
-                                    .background(
-                                        Color.Black.copy(alpha = 0.35f),
-                                        RoundedCornerShape(6.dp)
+                            ) {
+                                // Outline pass — same stroke width the encoder uses.
+                                Text(
+                                    text = overlayText,
+                                    color = outlineColor,
+                                    fontFamily = overlayFontFamily,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = fontSizeSp,
+                                    style = LocalTextStyle.current.copy(
+                                        drawStyle = Stroke(width = fontSizePx / 8f)
                                     )
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
+                                )
+                                Text(
+                                    text = overlayText,
+                                    color = Color(overlayColor),
+                                    fontFamily = overlayFontFamily,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = fontSizeSp
+                                )
+                            }
                         }
                     }
                 }
@@ -372,8 +385,13 @@ fun PreviewScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Font chips
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Font chips — scrollable row, each label drawn in its own typeface.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
                         for (font in OverlayFont.entries) {
                             FilterChip(
                                 selected = font == overlayFont,
@@ -381,7 +399,12 @@ fun PreviewScreen(
                                     overlayFont = font
                                     if (gifFile != null) viewModel.clearGeneratedGif()
                                 },
-                                label = { Text(font.label) }
+                                label = {
+                                    Text(
+                                        font.label,
+                                        fontFamily = remember(font) { FontFamily(font.typeface()) }
+                                    )
+                                }
                             )
                         }
                     }
