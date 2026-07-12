@@ -1,12 +1,17 @@
 # GIFit — Status
 
 ## Status
-in build — 1.0.1 (vc2) submitted to Google Play Production, awaiting review
+in build — 1.1 (vc3) built and ready to upload to the Production draft (first public release)
 
 ## Recently shipped
-- **Submitted 1.0.1 (vc2) to Production on 2026-07-12** — first public release, awaiting Google
-  review. Includes the stale-frames fix. Store listing / Data Safety / content rating already
-  approved from the earlier closed-testing pass.
+- **1.1 (versionCode 3)** (2026-07-12): overlay fonts expanded 4 → 16 device system font
+  families (casual, cursive, small caps, typewriter, weights, italics — all offline); removed
+  the translucent background chip behind preview text and replaced it with the same
+  outline-over-fill the encoder bakes, so the preview is now pixel-faithful WYSIWYG. Signed
+  AAB at `dist/GIFit-release-v1.1-vc3.aab` — upload this into the Play Console Production
+  draft ("Untitled release") and Start rollout. Note: the earlier 1.0.1 (vc2) production
+  submission never actually went out — the draft was created without a bundle and was never
+  sent for review; vc3 supersedes it.
 - **1.0.1 (versionCode 2) — fixed stale-frames bug** (2026-07-12): starting a new GIF after
   clearing images kept showing the previous project's frames in preview (activity-scoped
   PreviewViewModel + an `if (frames.isEmpty())` reload guard). Fixed the reload trigger, cleared
