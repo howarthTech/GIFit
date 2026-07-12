@@ -1,9 +1,12 @@
 # GIFit — Status
 
 ## Status
-in build — live on Google Play Closed Testing (Alpha); 1.0.1 (vc2) built, ready to publish
+in build — 1.0.1 (vc2) submitted to Google Play Production, awaiting review
 
 ## Recently shipped
+- **Submitted 1.0.1 (vc2) to Production on 2026-07-12** — first public release, awaiting Google
+  review. Includes the stale-frames fix. Store listing / Data Safety / content rating already
+  approved from the earlier closed-testing pass.
 - **1.0.1 (versionCode 2) — fixed stale-frames bug** (2026-07-12): starting a new GIF after
   clearing images kept showing the previous project's frames in preview (activity-scoped
   PreviewViewModel + an `if (frames.isEmpty())` reload guard). Fixed the reload trigger, cleared
