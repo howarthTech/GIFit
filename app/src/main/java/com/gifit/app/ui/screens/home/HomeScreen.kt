@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -120,10 +121,30 @@ fun HomeScreen(
         }
     }
 
+    // Shown beside the title so users can tell us exactly which build they're on
+    // when reporting an issue.
+    val versionLabel = remember {
+        runCatching {
+            "v" + context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrDefault("")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("GIFit") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("GIFit")
+                        if (versionLabel.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = versionLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
