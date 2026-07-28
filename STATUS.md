@@ -1,9 +1,12 @@
 # GIFit — Status
 
 ## Status
-in build — 1.1 (vc3) built and ready to upload to the Production draft (first public release)
+live — https://play.google.com/store/apps/details?id=com.gifit.app
 
 ## Recently shipped
+- **LIVE ON GOOGLE PLAY (2026-07-28)** — 1.1 (versionCode 3) passed production review and is
+  publicly rolled out. Listing verified resolving (HTTP 200). First public release: includes
+  the stale-frames fix, 16 overlay fonts, WYSIWYG outline text, and the in-app version label.
 - **Portfolio pack dropped** (2026-07-12) at
   `Howarth Tech Solutions\_Company\marketing\portfolio-inbox\gifit\` — pack.md (Overview /
   Key features / Technical highlights / What it demonstrates), 2880×1620 hero, OG image,
