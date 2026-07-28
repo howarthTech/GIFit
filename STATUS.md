@@ -53,18 +53,19 @@ live — https://play.google.com/store/apps/details?id=com.gifit.app
   `.claude/plan.md`.
 
 ## Needs Darrell
-- **Two Play Console grants to finish the metrics wiring** (decision made 2026-07-28: collector
-  extended with a Play-installs source; code + registry entry are live, GIFit already writes an
-  honest row with `installs` declared missing until these are done):
-  1. Play Console → **Download reports** → "Copy Cloud Storage URI" → paste the bucket name
-     (the `pubsite_prod_...` part, no `gs://`) into `_play_bucket` in
-     `_Company\analytics\registry.json`.
-  2. Play Console → **Users and permissions** → invite
-     `hts-analytics-collector@howarth-tech-solutions.iam.gserviceaccount.com` with
-     **"View app information and download bulk reports"** (read-only).
-  Full steps: `_Company\docs\10-analytics-collector.md` § "Play installs source". Note: exports
-  lag ~2 days, and a just-launched app has no CSV until first data lands — so `installs` may
-  stay declared-missing for a few days even after the grants.
+- **Play installs: one grant still not landed.** Bucket is configured
+  (`pubsite_prod_5310438300317077507`) and the collector is wired, but the service account still
+  gets a flat `403` on the stats bucket — verified it's an access problem, not a missing-file
+  one (an `objects.list` also 403s; with access-but-no-files that returns an empty 200).
+  Most likely cause: the Play Console permission was granted **at app level rather than account
+  level** — only the **Account permissions** tab's *"View app information and download bulk
+  reports"* produces bucket access. Worth re-opening Play Console → Users and permissions →
+  `hts-analytics-collector@howarth-tech-solutions.iam.gserviceaccount.com` and confirming it's
+  set on the account, not just GIFit. If it already is, it may simply be propagation (can take
+  up to ~24h) — the collector retries every cycle on its own and will start reporting with no
+  further action. Details: `_Company\docs\10-analytics-collector.md` § "Play installs source".
+  Separately, exports lag ~2 days after launch, so `installs` may stay declared-missing briefly
+  even once access works. No code change pending — GIFit writes an honest row meanwhile.
 
 ## Notes
 - No backend, no network permissions, no analytics/ads SDKs — nothing to configure server-side.
