@@ -53,12 +53,18 @@ live — https://play.google.com/store/apps/details?id=com.gifit.app
   `.claude/plan.md`.
 
 ## Needs Darrell
-- **Analytics/metrics decision:** GIFit has no registry entry in `_Company\analytics\registry.json`
-  and no web surface at all (no site, no GA4, no Search Console) — the collector's sources don't
-  apply. But it IS a live product; its real numbers are Play Console installs/ratings, which the
-  collector doesn't ingest. Options: (a) drop a `.no-metrics` file in the repo root so the
-  dashboard stops expecting rows, or (b) extend the collector with a Play-installs source.
-  Didn't want to unilaterally opt a live product out of metrics — your call.
+- **Two Play Console grants to finish the metrics wiring** (decision made 2026-07-28: collector
+  extended with a Play-installs source; code + registry entry are live, GIFit already writes an
+  honest row with `installs` declared missing until these are done):
+  1. Play Console → **Download reports** → "Copy Cloud Storage URI" → paste the bucket name
+     (the `pubsite_prod_...` part, no `gs://`) into `_play_bucket` in
+     `_Company\analytics\registry.json`.
+  2. Play Console → **Users and permissions** → invite
+     `hts-analytics-collector@howarth-tech-solutions.iam.gserviceaccount.com` with
+     **"View app information and download bulk reports"** (read-only).
+  Full steps: `_Company\docs\10-analytics-collector.md` § "Play installs source". Note: exports
+  lag ~2 days, and a just-launched app has no CSV until first data lands — so `installs` may
+  stay declared-missing for a few days even after the grants.
 
 ## Notes
 - No backend, no network permissions, no analytics/ads SDKs — nothing to configure server-side.
