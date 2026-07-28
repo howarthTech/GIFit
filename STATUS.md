@@ -46,13 +46,19 @@ live — https://play.google.com/store/apps/details?id=com.gifit.app
   https://howarthtech.github.io/GIFit/privacy-policy.html
 
 ## Next
-- **Play Console setup**: create the app listing, use the privacy policy URL above, fill out
-  Data Safety (answer: no data
-  collected/shared), content rating questionnaire, and a store listing (screenshots, short/full
-  description, feature graphic).
-- Bump `versionCode`/`versionName` in `app/build.gradle.kts` when actually cutting the first
-  release build for upload.
-- Everything else on the feature roadmap is tracked in `.claude/plan.md`.
+- Monitor first public installs/ratings in Play Console; respond to any user reviews.
+- Confirm the stale-frames-bug tester gets 1.1 via the Alpha track and re-verifies the fix.
+- Marketing to add the now-live Play Store link to portfolio-gifit.html (comms sent 2026-07-28).
+- Feature roadmap (loop count selector, speed presets, sticker overlays, etc.) is tracked in
+  `.claude/plan.md`.
+
+## Needs Darrell
+- **Analytics/metrics decision:** GIFit has no registry entry in `_Company\analytics\registry.json`
+  and no web surface at all (no site, no GA4, no Search Console) — the collector's sources don't
+  apply. But it IS a live product; its real numbers are Play Console installs/ratings, which the
+  collector doesn't ingest. Options: (a) drop a `.no-metrics` file in the repo root so the
+  dashboard stops expecting rows, or (b) extend the collector with a Play-installs source.
+  Didn't want to unilaterally opt a live product out of metrics — your call.
 
 ## Notes
 - No backend, no network permissions, no analytics/ads SDKs — nothing to configure server-side.
