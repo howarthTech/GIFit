@@ -30,8 +30,8 @@ android {
         applicationId = "com.gifit.app"
         minSdk = 21
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1"
+        versionCode = 4
+        versionName = "1.2"
 
         testInstrumentationRunner = "com.gifit.app.HiltTestRunner"
     }

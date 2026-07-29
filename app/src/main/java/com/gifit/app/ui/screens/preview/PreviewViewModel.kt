@@ -126,6 +126,22 @@ class PreviewViewModel @Inject constructor(
         _savedUri.value = null
     }
 
+    /**
+     * Wipe every trace of the current project. This ViewModel is activity-scoped and outlives
+     * Home<->Preview navigation, so a "New GIF" has to clear it explicitly or the next project
+     * inherits the old frames/output.
+     */
+    fun reset() {
+        _frames.value.forEach { it.recycle() }
+        _frames.value = emptyList()
+        _gifFile.value = null
+        _savedUri.value = null
+        _error.value = null
+        _progress.value = 0f
+        _isGenerating.value = false
+        _isLoading.value = false
+    }
+
     fun generateGif(
         context: Context,
         photoFrames: List<PhotoFrame>,

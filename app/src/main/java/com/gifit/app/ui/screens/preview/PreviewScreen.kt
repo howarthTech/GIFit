@@ -27,8 +27,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +47,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -85,6 +88,7 @@ fun PreviewScreen(
     photoFrames: List<PhotoFrame>,
     gifSettings: GifSettings,
     onNavigateBack: () -> Unit,
+    onStartNewProject: () -> Unit = {},
     viewModel: PreviewViewModel = hiltViewModel()
 ) {
     val frames by viewModel.frames.collectAsStateWithLifecycle()
@@ -97,6 +101,15 @@ fun PreviewScreen(
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var confirmNewProject by remember { mutableStateOf(false) }
+
+    // Clear this project out of the (activity-scoped) ViewModel, then let the caller reset the
+    // home screen and navigate back.
+    fun startNewProject() {
+        confirmNewProject = false
+        viewModel.reset()
+        onStartNewProject()
+    }
 
     val intervalMs = gifSettings.globalDelayMs
     var overlayText by rememberSaveable { mutableStateOf(gifSettings.globalOverlayText) }
@@ -527,8 +540,42 @@ fun PreviewScreen(
                             Text("Share")
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Start over with a clean slate. Confirm first if this GIF was never saved,
+                    // since starting fresh is the one action here that can lose it for good.
+                    OutlinedButton(
+                        onClick = {
+                            if (savedUri == null) confirmNewProject = true else startNewProject()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Start New GIF")
+                    }
                 }
             }
         }
+    }
+
+    if (confirmNewProject) {
+        AlertDialog(
+            onDismissRequest = { confirmNewProject = false },
+            title = { Text("Start a new GIF?") },
+            text = {
+                Text(
+                    "You haven't saved this GIF yet. Starting a new one will discard it and " +
+                        "clear your photos."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { startNewProject() }) { Text("Discard & start new") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmNewProject = false }) { Text("Cancel") }
+            }
+        )
     }
 }

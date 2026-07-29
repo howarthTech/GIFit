@@ -212,4 +212,22 @@ class HomeViewModel @Inject constructor(
     fun clearAll() {
         updateFrames(emptyList())
     }
+
+    /**
+     * Start a brand-new GIF: drop every frame and the overlay text, and wipe the undo history so
+     * the finished project can't be resurrected with Undo.
+     *
+     * Output preferences (resolution, colour quality, dithering, transition, default delay) are
+     * deliberately kept — those read as user settings rather than project content, and resetting
+     * them every time would be tedious for anyone who works at a non-default quality.
+     */
+    fun startNewProject() {
+        _frames.value = emptyList()
+        saveFrames()
+        _history.clear()
+        _historyIndex = -1
+        updateUndoRedoState()
+        _gifSettings.value = _gifSettings.value.copy(globalOverlayText = "")
+        saveSettings()
+    }
 }
