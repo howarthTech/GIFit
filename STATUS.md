@@ -4,6 +4,12 @@
 live — https://play.google.com/store/apps/details?id=com.gifit.app
 
 ## Recently shipped
+- **1.2 (versionCode 4) built, ready to upload** (2026-07-28): added a **"Start New GIF"**
+  action to the post-generation screen — finishing a GIF previously left no way to begin a
+  fresh one short of deleting each frame by hand. Clears the output, frames, photo list,
+  overlay text and undo history, then returns Home; confirms first if the GIF is unsaved.
+  Output preferences (resolution/quality/dithering/transition/delay) intentionally persist.
+  Verified on-device. Signed AAB: `dist/GIFit-release-v1.2-vc4.aab` — upload to Production.
 - **LIVE ON GOOGLE PLAY (2026-07-28)** — 1.1 (versionCode 3) passed production review and is
   publicly rolled out. Listing verified resolving (HTTP 200). First public release: includes
   the stale-frames fix, 16 overlay fonts, WYSIWYG outline text, and the in-app version label.
