@@ -4,6 +4,15 @@
 live — https://play.google.com/store/apps/details?id=com.gifit.app
 
 ## Recently shipped
+- 2026-11-19: Added five local JUnit 4 tests covering GIF binary metadata,
+  palette padding/truncation, empty LZW output, and an ImageIO decoding round-trip
+  checking every pixel. Production code unchanged; edits left uncommitted.
+- Verify: `.\gradlew.bat :app:testDebugUnitTest`
+- VERIFIED: cached Kotlin JVM compiler compiled GifWriter.kt, LzwEncoder.kt and
+  GifEncodingTest.kt; `java -cp <compiled classes and cached dependencies> org.junit.runner.JUnitCore com.gifit.app.gif.GifEncodingTest`
+  returned `JUnit version 4.13.2`, `OK (5 tests)`, exit 0.
+- UNVERIFIED: Gradle task integration. `.\gradlew.bat :app:testDebugUnitTest --offline --no-daemon`
+  failed bootstrapping uncached Gradle 8.13: `java.net.SocketException: Permission denied: getsockopt`.
 - **1.2 (versionCode 4) uploaded to Production** (2026-07-28): added a **"Start New GIF"**
   action to the post-generation screen — finishing a GIF previously left no way to begin a
   fresh one short of deleting each frame by hand. Clears the output, frames, photo list,
@@ -52,6 +61,7 @@ live — https://play.google.com/store/apps/details?id=com.gifit.app
   https://howarthtech.github.io/GIFit/privacy-policy.html
 
 ## Next
+- Run the declared Gradle check when its distribution and Android dependencies are available.
 - Monitor first public installs/ratings in Play Console; respond to any user reviews.
 - Confirm the stale-frames-bug tester gets 1.1 via the Alpha track and re-verifies the fix.
 - Marketing to add the now-live Play Store link to portfolio-gifit.html (comms sent 2026-07-28).
@@ -59,6 +69,10 @@ live — https://play.google.com/store/apps/details?id=com.gifit.app
   `.claude/plan.md`.
 
 ## Needs Darrell
+- Weekly drop pending: external company folder is outside sandbox write permissions.
+  Week 2026-47 summary: five JVM tests added; JUnitCore OK (5 tests); Gradle
+  bootstrap blocked by network restrictions; no production or infra changes;
+  no junior/delegated drafting used.
 - **Play installs: one grant still not landed.** Bucket is configured
   (`pubsite_prod_5310438300317077507`) and the collector is wired, but the service account still
   gets a flat `403` on the stats bucket — verified it's an access problem, not a missing-file
